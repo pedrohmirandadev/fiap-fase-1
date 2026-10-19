@@ -1,10 +1,10 @@
 import { WorkOrder } from '../../domain/work-order/work-order';
-import { WorkOrderItem, type ItemKind } from '../../domain/work-order/work-order-item';
+import { WorkOrderItem, ItemKind } from '../../domain/work-order/work-order-item';
 import { QuoteDecision } from '../../domain/work-order/quote-decision';
 import { QuoteVersion } from '../../domain/work-order/quote-version';
 import { StatusChange } from '../../domain/work-order/status-change';
 import type { WorkOrderRepository } from '../../domain/work-order/work-order-repository';
-import type { WorkOrderStatus } from '../../domain/work-order/status';
+import { WorkOrderStatus } from '../../domain/work-order/status';
 import { Money, Quantity, TrackingCode } from '../../domain/shared/value-objects';
 import { PostgresDao } from '../database/postgres-dao';
 
@@ -32,9 +32,9 @@ export class PgWorkOrderRepository extends PostgresDao implements WorkOrderRepos
 
   /** Chamado dentro de UnitOfWork; todos os filhos são persistidos pela raiz. */
   async save(order: WorkOrder): Promise<WorkOrder> {
-    const started = order.history.find(change => change.to === 'IN_PROGRESS')?.createdAt;
-    const finished = order.history.find(change => change.to === 'FINISHED')?.createdAt;
-    const delivered = order.history.find(change => change.to === 'DELIVERED')?.createdAt;
+    const started = order.history.find(change => change.to === WorkOrderStatus.InProgress)?.createdAt;
+    const finished = order.history.find(change => change.to === WorkOrderStatus.Finished)?.createdAt;
+    const delivered = order.history.find(change => change.to === WorkOrderStatus.Delivered)?.createdAt;
     const row = order.id === undefined
       ? await this.first<Row>('INSERT INTO work_orders (tracking_code,customer_id,vehicle_id,complaint,status,quote_total_cents,quote_version) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *',
         [order.trackingCode.value, order.customerId, order.vehicleId, order.complaint, order.status, order.quote.cents, order.quoteVersion.value])
@@ -44,7 +44,7 @@ export class PgWorkOrderRepository extends PostgresDao implements WorkOrderRepos
     for (const item of order.items) {
       if (item.id === undefined) {
         await this.rows('INSERT INTO order_items (work_order_id,kind,service_id,part_id,description,quantity,unit_price_cents,consumed) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
-          [row.id, item.kind, item.kind === 'SERVICE' ? item.catalogId : null, item.kind === 'PART' ? item.catalogId : null, item.description, item.quantity.value, item.unitPrice.cents, item.consumed]);
+          [row.id, item.kind, item.kind === ItemKind.Service ? item.catalogId : null, item.kind === ItemKind.Part ? item.catalogId : null, item.description, item.quantity.value, item.unitPrice.cents, item.consumed]);
       } else {
         await this.rows('UPDATE order_items SET consumed=$3 WHERE id=$1 AND work_order_id=$2', [item.id, row.id, item.consumed]);
       }

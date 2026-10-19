@@ -3,4 +3,4 @@ coverage = true
 coverageReporter = ["text", "lcov"]
 coverageDir = "coverage"
 coverageThreshold = { lines = 0.8, functions = 0.8 }
-coveragePathIgnorePatterns = ["src/infrastructure/**", "src/presentation/**", "src/application/errors.ts", "**/*.test.ts"]
+coveragePathIgnorePatterns = ["src/infrastructure/**", "src/presentation/**", "src/application/errors.ts", "**/*.test.ts", "tests/support/**", "tests/mocks/**", "tests/factories/**"]

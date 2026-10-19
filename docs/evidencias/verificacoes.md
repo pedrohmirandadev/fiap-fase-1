@@ -32,3 +32,15 @@ Os testes de integração só são executados com `RUN_INTEGRATION=true`; sem es
 - Revisão visual no navegador: navegação entre etapas 4 e 7, renderização de post-its/legenda, entidades/VOs, escala legível e ajuste de largura.
 - A coleção Insomnia foi atualizada com `quote_version`; não foi importada manualmente no aplicativo nesta revisão.
 - Não houve nova análise de vulnerabilidades nesta revisão. Não há publicação de link externo, broker, Event Sourcing, notificações ou suporte multiunidade.
+
+## Exclusões em cascata — 14/10/2026
+
+- `bun run typecheck`: concluído sem erros.
+- `bun run test:coverage`, sem integração: 20 testes passaram; 14 cenários/hooks de integração foram ignorados; nenhuma falha. Cobertura de 99,86% de linhas e 100% de funções nos arquivos medidos. Infraestrutura, apresentação e suporte de testes ficam fora da medição; o limiar de 80% foi mantido.
+- `RUN_INTEGRATION=true DATABASE_URL=postgres://oficina:oficina_local@127.0.0.1:5432/oficina bun --cwd=tests test cascade-deletions.integration.test.ts`: 8 testes passaram; nenhuma falha. Inclui cliente/veículo com múltiplas OS, preservação de catálogo e estoque, exclusão repetida, consultas, rollback, atualização de banco com dados existentes, reaplicação da migração e SQL direto.
+- Os cenários específicos de cascata criam schemas exclusivos em transações revertidas ao final, inclusive as mudanças de schema.
+- `RUN_INTEGRATION=true DATABASE_URL=postgres://oficina:oficina_local@127.0.0.1:5432/oficina bun run test:coverage`: 32 testes passaram, 0 falhas e 295 verificações; inclui os quatro testes HTTP existentes. Cobertura: 99,86% de linhas e 100% de funções nos arquivos medidos.
+- Migração `0004_cascade_deletions.sql` aplicada no PostgreSQL local. Nenhum registro existente foi excluído pela migração.
+- Coleção Insomnia validada como JSON, com IDs únicos e descrições das duas exclusões em cascata. Não foi importada manualmente no aplicativo nesta revisão.
+- Build da imagem Docker concluído. O início do contêiner da API encontrou a porta 3000 ocupada por `bun --watch src/index.ts` do próprio projeto. Essa execução já ativa foi verificada: `/health` respondeu 200 com banco conectado e `/openapi/json` apresentou as duas rotas de cascata atualizadas.
+- Não houve nova análise de vulnerabilidades nesta revisão.

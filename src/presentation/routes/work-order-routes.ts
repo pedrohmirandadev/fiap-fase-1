@@ -1,8 +1,9 @@
 import { Elysia, t } from 'elysia';
 import { useCases } from '../../composition';
-import type { WorkOrderStatus } from '../../domain/work-order/status';
+import { WorkOrderStatus } from '../../domain/work-order/status';
+import { ItemKind } from '../../domain/work-order/work-order-item';
 
-export const itemSchema = t.Object({ type: t.Union([t.Literal('SERVICE'), t.Literal('PART')]), id: t.Integer(), quantity: t.Integer({ minimum: 1 }) });
+export const itemSchema = t.Object({ type: t.Enum(ItemKind), id: t.Integer(), quantity: t.Integer({ minimum: 1 }) });
 
 export const publicWorkOrderRoutes = new Elysia()
   .get('/public/work-orders/:trackingCode', ({ params }) => useCases.workOrders.track.execute(params.trackingCode), {
@@ -18,13 +19,15 @@ export const workOrderRoutes = new Elysia()
     body: t.Object({ customerId: t.Optional(t.Integer()), customerDocument: t.Optional(t.String()), vehicleId: t.Integer(), complaint: t.String({ minLength: 3 }), items: t.Array(itemSchema) }),
     detail: { summary: 'Cria OS e orçamento inicial' }
   })
-  .get('/work-orders', ({ query }) => useCases.workOrders.list.execute(query.status, query.limit, query.offset))
+  .get('/work-orders', ({ query }) => useCases.workOrders.list.execute(query.status, query.limit, query.offset), {
+    query: t.Object({ status: t.Optional(t.Enum(WorkOrderStatus)), limit: t.Optional(t.String()), offset: t.Optional(t.String()) })
+  })
   .post('/work-orders/:id/items', ({ params, body }) => useCases.workOrders.addItem.execute({ workOrderId: Number(params.id), item: body }), {
     body: itemSchema, detail: { summary: 'Propõe reparo adicional e exige nova aprovação do orçamento' }
   })
   .get('/work-orders/:id', ({ params }) => useCases.workOrders.get.execute(Number(params.id)))
-  .post('/work-orders/:id/status', ({ params, body }) => useCases.workOrders.changeStatus.execute(Number(params.id), body.status as WorkOrderStatus, body.note), {
-    body: t.Object({ status: t.Union([t.Literal('RECEIVED'), t.Literal('DIAGNOSIS'), t.Literal('AWAITING_APPROVAL'), t.Literal('IN_PROGRESS'), t.Literal('FINISHED'), t.Literal('DELIVERED')]), note: t.Optional(t.String()) }),
+  .post('/work-orders/:id/status', ({ params, body }) => useCases.workOrders.changeStatus.execute(Number(params.id), body.status, body.note), {
+    body: t.Object({ status: t.Enum(WorkOrderStatus), note: t.Optional(t.String()) }),
     detail: { summary: 'Aplica uma transição válida e registra histórico' }
   })
   .get('/work-orders/:id/history', ({ params }) => useCases.workOrders.history.execute(Number(params.id)))

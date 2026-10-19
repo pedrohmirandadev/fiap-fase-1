@@ -12,6 +12,8 @@
     "test": "bun test",
     "test:memory": "bun --cwd=tests test in-memory.test.ts",
     "test:coverage": "bun test --coverage",
+    "mocks:generate": "bun scripts/generate-test-mocks.ts",
+    "mocks:check": "bun scripts/generate-test-mocks.ts --check",
     "typecheck": "tsc --noEmit",
     "security:audit": "bun audit"
   },

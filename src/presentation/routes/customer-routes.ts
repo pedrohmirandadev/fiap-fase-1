@@ -11,4 +11,6 @@ export const customerRoutes = new Elysia()
   .patch('/customers/:id', async ({ params, body }) => customerView(await useCases.customers.update.execute(Number(params.id), body)), {
     body: t.Object({ name: t.Optional(t.String()), email: t.Optional(t.String()), phone: t.Optional(t.String()) })
   })
-  .delete('/customers/:id', ({ params }) => useCases.customers.delete.execute(Number(params.id)));
+  .delete('/customers/:id', ({ params }) => useCases.customers.delete.execute(Number(params.id)), {
+    detail: { summary: 'Exclui cliente e seus veículos e OS em cascata', description: 'Remove também itens, decisões e histórico das OS. Preserva catálogo, saldo, movimentos de estoque (sem vínculo à OS removida) e eventos de auditoria.' }
+  });

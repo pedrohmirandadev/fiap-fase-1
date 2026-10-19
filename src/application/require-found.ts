@@ -1,5 +1,5 @@
-import { ApplicationError } from './errors';
+import { ApplicationError, ErrorKind } from './errors';
 export function requireFound<T>(value: T | undefined, label: string): T {
-  if (value === undefined) throw new ApplicationError('not_found', `${label} não encontrado`);
+  if (value === undefined) throw new ApplicationError(ErrorKind.NotFound, `${label} não encontrado`);
   return value;
 }

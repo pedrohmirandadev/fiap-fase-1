@@ -1,11 +1,12 @@
 import type { WorkOrderQueries } from '../../application/work-order-queries';
-import type { WorkOrderItem } from '../../domain/work-order/work-order-item';
+import { type WorkOrderItem, ItemKind } from '../../domain/work-order/work-order-item';
+import type { WorkOrderStatus } from '../../domain/work-order/status';
 import type { StatusChange } from '../../domain/work-order/status-change';
 import type { StoredWorkOrder, StateSession } from './state';
 
 const itemRow = (item: WorkOrderItem) => ({
-  id: item.id, kind: item.kind, service_id: item.kind === 'SERVICE' ? item.catalogId : null,
-  part_id: item.kind === 'PART' ? item.catalogId : null, description: item.description,
+  id: item.id, kind: item.kind, service_id: item.kind === ItemKind.Service ? item.catalogId : null,
+  part_id: item.kind === ItemKind.Part ? item.catalogId : null, description: item.description,
   quantity: item.quantity.value, unit_price_cents: item.unitPrice.cents, consumed: item.consumed
 });
 const historyRow = (change: StatusChange) => ({
@@ -26,7 +27,7 @@ export class InMemoryWorkOrderQueries implements WorkOrderQueries {
     };
   }
 
-  async list(status?: string, limit = 50, offset = 0) {
+  async list(status?: WorkOrderStatus, limit = 50, offset = 0) {
     return [...this.session.state.workOrders.values()]
       .filter(record => !status || record.order.status === status)
       .sort((a, b) => b.order.id! - a.order.id!).slice(offset, offset + limit)

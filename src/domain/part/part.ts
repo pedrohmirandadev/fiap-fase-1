@@ -1,7 +1,7 @@
-import { DomainError } from '../shared/domain-error';
+import { DomainError, DomainErrorKind } from '../shared/domain-error';
 import { Money, Quantity } from '../shared/value-objects';
 import { StockBalance } from '../shared/stock-balance';
-import { DomainEvent } from '../shared/domain-event';
+import { DomainEvent, DomainEventName, AggregateType } from '../shared/domain-event';
 import { InventoryMovement } from './inventory-movement';
 
 export class Part {
@@ -42,7 +42,7 @@ export class Part {
   }
   withdrawStock(quantity: number): Part {
     if (!Number.isSafeInteger(quantity) || quantity <= 0) throw new DomainError('Quantidade da movimentação inválida');
-    if (this.stockQuantity < quantity) throw new DomainError('Estoque não pode ficar negativo', 'conflict');
+    if (this.stockQuantity < quantity) throw new DomainError('Estoque não pode ficar negativo', DomainErrorKind.Conflict);
     return new Part(this.id, this.sku, this.name, this.description, this.price, this.stockBalance.withdraw(new Quantity(quantity)).value, this.minimumStock, this.active, this.version);
   }
   recordReceipt(quantity: Quantity, reason: string): StockChange {
@@ -58,16 +58,16 @@ export class Part {
   private stockChange(part: Part, delta: number, reason: string, workOrderId?: number): StockChange {
     if (!this.id) throw new DomainError('Peça deve estar cadastrada antes de movimentar estoque');
     const movement = new InventoryMovement(undefined, this.id, delta, reason, workOrderId);
-    const events = [new DomainEvent(workOrderId ? 'PartsConsumed' : delta > 0 ? 'StockReceived' : 'StockWithdrawn',
-      'Part', String(this.id), { quantityDelta: delta, balance: part.stockQuantity, ...(workOrderId ? { workOrderId } : {}) })];
+    const events = [new DomainEvent(workOrderId ? DomainEventName.PartsConsumed : delta > 0 ? DomainEventName.StockReceived : DomainEventName.StockWithdrawn,
+      AggregateType.Part, String(this.id), { quantityDelta: delta, balance: part.stockQuantity, ...(workOrderId ? { workOrderId } : {}) })];
     if (this.stockQuantity > this.minimumStock && part.stockQuantity <= part.minimumStock) {
-      events.push(new DomainEvent('MinimumStockReached', 'Part', String(this.id), { balance: part.stockQuantity, minimumStock: part.minimumStock }));
+      events.push(new DomainEvent(DomainEventName.MinimumStockReached, AggregateType.Part, String(this.id), { balance: part.stockQuantity, minimumStock: part.minimumStock }));
     }
     return { part, movement, events };
   }
   ensureAvailable(quantity: number): void {
     new Quantity(quantity);
-    if (!this.active || this.stockQuantity < quantity) throw new DomainError('Estoque insuficiente ou peça indisponível', 'conflict');
+    if (!this.active || this.stockQuantity < quantity) throw new DomainError('Estoque insuficiente ou peça indisponível', DomainErrorKind.Conflict);
   }
 }
 

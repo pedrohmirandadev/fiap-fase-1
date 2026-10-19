@@ -1,11 +1,29 @@
 import { randomUUID } from 'node:crypto';
 
-export type DomainEventName =
-  | 'WorkOrderReceived' | 'QuoteCalculated' | 'DiagnosisStarted' | 'QuoteSubmitted'
-  | 'QuoteApproved' | 'QuoteRejected' | 'ExecutionStarted' | 'ExecutionResumed'
-  | 'AdditionalRepairProposed' | 'ExecutionPaused' | 'QuoteRevised'
-  | 'RepairFinished' | 'VehicleDelivered' | 'StockReceived' | 'StockWithdrawn'
-  | 'PartsConsumed' | 'MinimumStockReached';
+export enum DomainEventName {
+  WorkOrderReceived = 'WorkOrderReceived',
+  QuoteCalculated = 'QuoteCalculated',
+  DiagnosisStarted = 'DiagnosisStarted',
+  QuoteSubmitted = 'QuoteSubmitted',
+  QuoteApproved = 'QuoteApproved',
+  QuoteRejected = 'QuoteRejected',
+  ExecutionStarted = 'ExecutionStarted',
+  ExecutionResumed = 'ExecutionResumed',
+  AdditionalRepairProposed = 'AdditionalRepairProposed',
+  ExecutionPaused = 'ExecutionPaused',
+  QuoteRevised = 'QuoteRevised',
+  RepairFinished = 'RepairFinished',
+  VehicleDelivered = 'VehicleDelivered',
+  StockReceived = 'StockReceived',
+  StockWithdrawn = 'StockWithdrawn',
+  PartsConsumed = 'PartsConsumed',
+  MinimumStockReached = 'MinimumStockReached'
+}
+
+export enum AggregateType {
+  WorkOrder = 'WorkOrder',
+  Part = 'Part'
+}
 
 /** Fato já aceito pelo domínio. O armazenamento ocorre na mesma transação da mudança. */
 export class DomainEvent {
@@ -13,7 +31,7 @@ export class DomainEvent {
   readonly occurredAt = new Date();
   readonly payload: Readonly<Record<string, string | number | boolean>>;
 
-  constructor(readonly name: DomainEventName, readonly aggregateType: 'WorkOrder' | 'Part',
+  constructor(readonly name: DomainEventName, readonly aggregateType: AggregateType,
     readonly aggregateId: string, payload: Record<string, string | number | boolean>) {
     this.payload = Object.freeze({ ...payload });
     Object.freeze(this);
