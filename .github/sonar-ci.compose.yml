@@ -1,0 +1,6 @@
+# Sobrescritas usadas apenas pelo CI. As configurações locais da main são preservadas.
+services:
+  sonarqube:
+    image: sonarqube@sha256:0b3408443fb6a311253de27941b10977c9b977fd53be2265947bfe14161308b8
+  sonar-scanner:
+    image: sonarsource/sonar-scanner-cli@sha256:a3f4215076706c95a17a68c19322ee916e40a3acd081a8c1a1e839e0194afa57

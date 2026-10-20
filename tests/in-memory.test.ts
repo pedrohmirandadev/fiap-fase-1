@@ -1,3 +1,7 @@
+import { DomainErrorKind } from '../src/domain/shared/domain-error';
+import { DomainEventName } from '../src/domain/shared/domain-event';
+import { ItemKind } from '../src/domain/work-order/work-order-item';
+import { WorkOrderStatus } from '../src/domain/work-order/status';
 import { describe, expect, it } from 'bun:test';
 import { hashSync } from 'bcryptjs';
 import { createInMemoryEnvironment } from '../src/infrastructure/in-memory/context';
@@ -21,6 +25,7 @@ import { ProposeAdditionalRepair } from '../src/application/use-cases/work-order
 import { TrackWorkOrder } from '../src/application/use-cases/work-order/track-work-order';
 import { GetWorkOrder } from '../src/application/use-cases/work-order/get-work-order';
 import { GetAverageExecutionTime } from '../src/application/use-cases/work-order/get-average-execution-time';
+import { registerCascadeDeletionTests } from './support/cascade-deletion-contract';
 
 describe('adaptadores in-memory', () => {
   it('executa casos de uso de cadastro, alterações explícitas e autenticação sem PostgreSQL', async () => {
@@ -56,46 +61,51 @@ describe('adaptadores in-memory', () => {
     const decide = new DecideQuote(unitOfWork);
     const adjustStock = new AdjustStock(unitOfWork);
     const created = await create.execute({ customerId: customer.id!, vehicleId: vehicle.id!, complaint: 'Barulho no motor', items: [
-      { type: 'SERVICE', id: service.id!, quantity: 1 },
-      { type: 'PART', id: firstPart.id!, quantity: 1 },
-      { type: 'PART', id: secondPart.id!, quantity: 1 }
+      { type: ItemKind.Service, id: service.id!, quantity: 1 },
+      { type: ItemKind.Part, id: firstPart.id!, quantity: 1 },
+      { type: ItemKind.Part, id: secondPart.id!, quantity: 1 }
     ] });
     expect(created.quote_total_cents).toBe(13000);
-    await changeStatus.execute(created.id!, 'DIAGNOSIS');
-    await changeStatus.execute(created.id!, 'AWAITING_APPROVAL');
+    await changeStatus.execute(created.id!, WorkOrderStatus.Diagnosis);
+    await changeStatus.execute(created.id!, WorkOrderStatus.AwaitingApproval);
     await adjustStock.execute(secondPart.id!, -1, 'Reserva externa');
 
     const eventCount = store.state.events.length;
-    await expect(decide.execute(created.trackingCode, true)).rejects.toMatchObject({ kind: 'conflict' });
+    await expect(decide.execute(created.trackingCode, true)).rejects.toMatchObject({ kind: DomainErrorKind.Conflict });
     expect(store.state.events).toHaveLength(eventCount);
     expect((await repositories.parts.findById(firstPart.id!))?.stockQuantity).toBe(1);
-    expect((await repositories.workOrders.findById(created.id!))?.status).toBe('AWAITING_APPROVAL');
+    expect((await repositories.workOrders.findById(created.id!))?.status).toBe(WorkOrderStatus.AwaitingApproval);
     expect((await repositories.workOrders.findById(created.id!))?.decisions).toHaveLength(0);
     expect(await repositories.parts.movements(firstPart.id!)).toHaveLength(0);
 
     await decide.execute(created.trackingCode, false, 'Rever proposta', 1);
     expect((await repositories.parts.findById(firstPart.id!))?.stockQuantity).toBe(1);
-    expect(store.state.events.at(-1)?.name).toBe('QuoteRejected');
+    expect(store.state.events.at(-1)?.name).toBe(DomainEventName.QuoteRejected);
     await adjustStock.execute(secondPart.id!, 1, 'Reposição');
     await decide.execute(created.trackingCode, true);
     expect((await repositories.parts.findById(firstPart.id!))?.stockQuantity).toBe(0);
-    expect((await repositories.workOrders.findById(created.id!))?.status).toBe('IN_PROGRESS');
+    expect((await repositories.workOrders.findById(created.id!))?.status).toBe(WorkOrderStatus.InProgress);
     const publicView = await new TrackWorkOrder(workOrderQueries).execute(created.trackingCode);
-    expect(publicView.status).toBe('IN_PROGRESS');
+    expect(publicView.status).toBe(WorkOrderStatus.InProgress);
     expect(publicView).not.toHaveProperty('document');
 
     await adjustStock.execute(firstPart.id!, 1, 'Reposição adicional');
-    await new ProposeAdditionalRepair(unitOfWork).execute({ workOrderId: created.id!, item: { type: 'PART', id: firstPart.id!, quantity: 1 } });
-    expect((await repositories.workOrders.findById(created.id!))?.status).toBe('AWAITING_APPROVAL');
-    await expect(decide.execute(created.trackingCode, true, undefined, 1)).rejects.toMatchObject({ kind: 'conflict' });
+    await new ProposeAdditionalRepair(unitOfWork).execute({ workOrderId: created.id!, item: { type: ItemKind.Part, id: firstPart.id!, quantity: 1 } });
+    expect((await repositories.workOrders.findById(created.id!))?.status).toBe(WorkOrderStatus.AwaitingApproval);
+    await expect(decide.execute(created.trackingCode, true, undefined, 1)).rejects.toMatchObject({ kind: DomainErrorKind.Conflict });
     await decide.execute(created.trackingCode, true, undefined, 2);
-    expect(store.state.events.map(event => event.name)).toContain('ExecutionResumed');
-    expect(store.state.events.filter(event => event.name === 'PartsConsumed')).toHaveLength(3);
-    await changeStatus.execute(created.id!, 'FINISHED');
-    await changeStatus.execute(created.id!, 'DELIVERED');
+    expect(store.state.events.map(event => event.name)).toContain(DomainEventName.ExecutionResumed);
+    expect(store.state.events.filter(event => event.name === DomainEventName.PartsConsumed)).toHaveLength(3);
+    await changeStatus.execute(created.id!, WorkOrderStatus.Finished);
+    await changeStatus.execute(created.id!, WorkOrderStatus.Delivered);
     const detail = await new GetWorkOrder(workOrderQueries).execute(created.id!);
-    expect(detail.status).toBe('DELIVERED');
+    expect(detail.status).toBe(WorkOrderStatus.Delivered);
     expect((detail.decisions as unknown[]).length).toBe(3);
     expect((await new GetAverageExecutionTime(workOrderQueries).execute()).completed_orders).toBe(1);
   });
+});
+
+registerCascadeDeletionTests('exclusão em cascata em memória', async check => {
+  const environment = createInMemoryEnvironment();
+  await check({ ...environment, eventCount: async () => environment.store.state.events.length });
 });

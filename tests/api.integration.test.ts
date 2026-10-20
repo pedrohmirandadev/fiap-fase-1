@@ -1,20 +1,32 @@
-import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
-import { app } from '../src/presentation/app';
+import { afterAll, describe, expect, it } from 'bun:test';
+import { createApp } from '../src/presentation/app';
+import { createUseCases } from '../src/composition';
+import { createPostgresTestEnvironment } from './support/postgres-environment';
+import { seedRepositoryFixture } from './support/repository-contract';
+import { createEntityFactories, FIXTURE_ADMIN_PASSWORD } from './factories';
 
-const enabled = process.env.RUN_INTEGRATION === 'true';
-describe.skipIf(!enabled)('fluxo integrado da API (requer PostgreSQL migrado e seed)', () => {
-  let server: ReturnType<typeof app.listen>;
-  let baseUrl = '';
-  let token = '';
-  beforeAll(async () => {
-    server = app.listen(0);
-    baseUrl = `http://localhost:${server.server?.port}`;
-    const login = await fetch(`${baseUrl}/api/v1/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: process.env.ADMIN_EMAIL ?? 'admin@oficina.local', password: process.env.ADMIN_PASSWORD ?? 'TroqueEstaSenha123!' }) });
-    expect(login.status).toBe(200);
-    token = (await login.json() as { token: string }).token;
+const database = createPostgresTestEnvironment();
+afterAll(() => database.close());
+/** Cada teste HTTP possui banco isolado, dados próprios e servidor em porta efêmera. */
+async function withApi(check: (context: { baseUrl: string; token: string }) => Promise<void>) {
+  await database.run(async env => {
+    await seedRepositoryFixture(env);
+    const admin = createEntityFactories().adminUser();
+    await env.addAdmin(admin);
+    const app = createApp({ useCases: createUseCases(env.repositories, env.unitOfWork, env.workOrderQueries), checkDatabase: async () => {}, jwtSecret: 'postgres-api-test-secret-12345678901234567890' });
+    app.listen(0);
+    const baseUrl = `http://localhost:${app.server?.port}`;
+    try {
+      const login = await fetch(`${baseUrl}/api/v1/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: admin.email, password: FIXTURE_ADMIN_PASSWORD }) });
+      expect(login.status).toBe(200);
+      const { token } = await login.json() as { token: string };
+      await check({ baseUrl, token });
+    } finally { await app.stop(); }
   });
-  afterAll(() => server?.stop());
-  it('cria OS, consulta orçamento, aprova e acompanha mudanças', async () => {
+}
+
+describe('HTTP com PostgreSQL real e rollback por cenário', () => {
+  it('cria OS, consulta orçamento, aprova e acompanha mudanças', () => withApi(async ({ baseUrl, token }) => {
     const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json' };
     const [customer] = await (await fetch(`${baseUrl}/api/v1/customers`, { headers })).json() as Array<{ id: number }>;
     const [vehicle] = await (await fetch(`${baseUrl}/api/v1/vehicles`, { headers })).json() as Array<{ id: number }>;
@@ -58,15 +70,15 @@ describe.skipIf(!enabled)('fluxo integrado da API (requer PostgreSQL migrado e s
     }
     const finalOrder = await (await fetch(`${baseUrl}/api/v1/work-orders/${order.id}`, { headers })).json() as { status: string };
     expect(finalOrder.status).toBe('DELIVERED');
-  });
-  it('protege rotas administrativas e rejeita transição inválida', async () => {
+  }));
+  it('protege rotas administrativas e rejeita transição inválida', () => withApi(async ({ baseUrl, token }) => {
     expect((await fetch(`${baseUrl}/api/v1/work-orders`)).status).toBe(401);
     const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json' };
     const [order] = await (await fetch(`${baseUrl}/api/v1/work-orders`, { headers })).json() as Array<{ id: number }>;
     const response = await fetch(`${baseUrl}/api/v1/work-orders/${order.id}/status`, { method: 'POST', headers, body: JSON.stringify({ status: 'RECEIVED' }) });
     expect(response.status).toBe(409);
-  });
-  it('gerencia cadastros e registra movimentações sem permitir estoque negativo', async () => {
+  }));
+  it('gerencia cadastros e registra movimentações sem permitir estoque negativo', () => withApi(async ({ baseUrl, token }) => {
     const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json' };
     const request = (path: string, method: string, body?: object) => fetch(`${baseUrl}/api/v1${path}`, { method, headers, body: body && JSON.stringify(body) });
     const base = String(Math.floor(100000000 + Math.random() * 900000000));
@@ -109,8 +121,8 @@ describe.skipIf(!enabled)('fluxo integrado da API (requer PostgreSQL migrado e s
 
     expect((await request(`/vehicles/${vehicle.id}`, 'DELETE')).status).toBe(200);
     expect((await request(`/customers/${customer.id}`, 'DELETE')).status).toBe(200);
-  });
-  it('cadastra oficina e consulta histórico e métrica', async () => {
+  }));
+  it('cadastra oficina e consulta histórico e métrica', () => withApi(async ({ baseUrl, token }) => {
     const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json' };
     const base = String(Math.floor(100000000000 + Math.random() * 900000000000));
     const checkDigit = (digits: string, weights: number[]) => {
@@ -129,5 +141,5 @@ describe.skipIf(!enabled)('fluxo integrado da API (requer PostgreSQL migrado e s
     const [order] = await (await fetch(`${baseUrl}/api/v1/work-orders`, { headers })).json() as Array<{ id: number }>;
     expect((await fetch(`${baseUrl}/api/v1/work-orders/${order.id}/history`, { headers })).status).toBe(200);
     expect((await fetch(`${baseUrl}/api/v1/metrics/average-execution-time`, { headers })).status).toBe(200);
-  });
+  }));
 });

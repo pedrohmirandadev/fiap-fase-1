@@ -45,6 +45,10 @@ Customer controla nome e contato com ações específicas; Vehicle controla marc
 
 Ainda não foram criados VOs específicos de endereço, email e telefone. São strings no modelo atual; o schema HTTP valida email onde exigido. Eles não são apresentados como VOs implementados nos quadros.
 
+### Exclusões
+
+Excluir cliente ou veículo remove suas OS e os respectivos filhos em cascata. Movimentos de estoque mantêm o registro e perdem o vínculo à OS; eventos já registrados permanecem para auditoria. Serviços e peças usam desativação. A política e os limites transacionais estão em [exclusoes.md](exclusoes.md).
+
 ## VOs implementados
 
 | VO | Invariante / igualdade |

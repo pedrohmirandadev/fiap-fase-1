@@ -14,6 +14,7 @@
 | H10 | Consulta de progresso é um evento? | Não muda o negócio; tratar como query/read model. | TrackWorkOrder. Pode ter observabilidade técnica futura, mas não gera evento de sucesso da OS. |
 | H11 | Qual é o limite transacional? | Escrita dos filhos somente pelo repositório da raiz. Aprovação coordena duas raízes no monólito. | WorkOrderRepository.save; PartRepository. Nenhum repositório independente para item/decisão/histórico. |
 | H12 | Serviços precisam de máquinas/funcionários? | Fora do escopo atual. | Service representa item precificado do catálogo, sem agenda ou alocação. |
+| H13 | Como excluir cliente ou veículo com relacionamentos? | Excluir veículos/OS dependentes e filhos da OS em cascata, preservando histórico de estoque e eventos. | DeleteCustomer e DeleteVehicle delegam a repository.delete(id); FKs CASCADE e SET NULL na migração 0004; equivalente em memória. Catálogo usa desativação. Ver [política de exclusões](exclusoes.md). |
 
 ## Estados e decisões
 

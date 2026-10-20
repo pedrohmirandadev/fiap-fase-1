@@ -4,3 +4,5 @@ coverage/
 .scannerwork/
 dist/
 .DS_Store
+__pycache__/
+sonar-reports/

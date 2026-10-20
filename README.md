@@ -10,6 +10,7 @@ MVP backend para organizar clientes, veículos, serviços, estoque e ordens de s
 - `src/infrastructure/in-memory/` implementa os mesmos contratos para testar casos de uso sem PostgreSQL. `InMemoryUnitOfWork` trabalha sobre uma cópia do estado e só a publica quando a operação termina com sucesso.
 - PostgreSQL foi escolhido por manter relações e histórico com chaves estrangeiras, restrições e transações nos fluxos de OS e estoque.
 - Elysia gera documentação OpenAPI em `/openapi`. As rotas administrativas usam JWT.
+- Valores fechados usam os enums `WorkOrderStatus`, `ItemKind`, `DomainEventName`, `AggregateType`, `DomainErrorKind` e `ErrorKind`. Rotas e persistência reutilizam os tipos do domínio; a API mantém os mesmos valores textuais. O filtro `GET /api/v1/work-orders?status=IN_PROGRESS` valida os estados de `WorkOrderStatus`.
 
 ## Executar com Docker Compose
 
@@ -34,6 +35,8 @@ bun run db:seed
 bun run dev
 ```
 
+O seed exige `ADMIN_PASSWORD` no ambiente (o `.env.example` e o Compose incluem um exemplo local). O código de produção não possui senha de banco ou administrador como fallback.
+
 ## Autenticação e demonstração
 
 Faça `POST /api/v1/auth/login` com JSON `{"email":"admin@oficina.local","password":"TroqueEstaSenha123!"}`. Envie o token retornado como `Authorization: Bearer <token>` nas rotas administrativas.
@@ -44,12 +47,29 @@ O seed cria a cliente Marina Souza (CPF fictício válido para teste), Honda Civ
 
 Importe `docs/insomnia/oficina-insomnia.json` no Insomnia. O ambiente base `Local` usa `http://localhost:3000`; a coleção inclui requisições para os métodos documentados, exemplos e cenários de erro. Após o login, copie o JWT para `jwt`; após criar uma OS, copie `id` para `work_order_id`, `trackingCode` para `tracking_code` e `quoteVersion` para `quote_version`. Atualize `quote_version` após propor um reparo adicional. A documentação interativa em `/openapi` é uma página para abrir no navegador; `/openapi/json` é a especificação para clientes HTTP. Login usa **POST**, não GET.
 
+### Exclusões em cascata
+
+Excluir um cliente remove seus veículos e OS; excluir um veículo remove suas OS. Em ambos os casos, itens, decisões e histórico dessas ordens são removidos na mesma transação. Movimentos de estoque e eventos de auditoria são preservados; o movimento perde o vínculo com a OS removida, e o saldo não é estornado. As rotas DELETE de serviços e peças desativam o catálogo, preservando suas referências. Detalhes e verificação: [política de exclusões](docs/ddd/exclusoes.md).
+
+Para atualizar um banco já existente, execute `bun run db:migrate`; o Docker Compose também aplica a migração ao iniciar a API.
+
 ## Testes e segurança
 
 ```bash
+# Testes que não precisam de banco:
+bun run test:unit
+bun run test:controllers
+bun run test:repositories
 bun run test:memory
-bun run test:coverage
 bun run typecheck
+bun run mocks:check
+
+# Suíte completa e cobertura (PostgreSQL obrigatório):
+docker compose up -d db
+DATABASE_URL=postgres://oficina:oficina_local@127.0.0.1:5432/oficina bun run test
+DATABASE_URL=postgres://oficina:oficina_local@127.0.0.1:5432/oficina bun run test:integration
+DATABASE_URL=postgres://oficina:oficina_local@127.0.0.1:5432/oficina bun run test:coverage
+
 bun run security:audit
 ```
 
@@ -82,7 +102,17 @@ const customer = await createCustomer.execute({ name: 'Marina Souza', document: 
 // Injete unitOfWork nos casos de uso transacionais e workOrderQueries nas consultas.
 ```
 
-O limiar de cobertura configurado é 80% em linhas e funções sobre domínio e casos de uso quando `test:coverage` é executado. Os testes integrados ficam habilitados ao executar `RUN_INTEGRATION=true DATABASE_URL=postgres://oficina:oficina_local@localhost:5432/oficina bun run test:coverage` com Docker Compose ativo e banco migrado/populado. O resultado observado está em [relatório de auditoria](docs/security/dependency-audit.md) e [verificações executadas](docs/evidencias/verificacoes.md).
+Para testes com controle de retornos e inspeção de chamadas, use `createMockEnvironment()` de `tests/mocks`. Uma chamada cria os mocks dos sete repositórios, eventos, consultas de OS e UnitOfWork, além de entidades fictícias relacionadas. `bun run mocks:generate` atualiza os mocks a partir das interfaces; `bun run mocks:check` confere a sincronização. Exemplos: [mocks e fábricas](docs/testing/mocks.md).
+
+O limiar de cobertura é **90% por arquivo em linhas e funções**, incluindo **domínio, aplicação, infraestrutura e apresentação**. `test:coverage` executa obrigatoriamente as integrações. Os testes PostgreSQL aplicam as migrações em schemas exclusivos e revertem os dados e o DDL ao terminar; não precisam de seed nem da API já iniciada. `bun test`, `bun test --coverage`, `bun run test` e `bun run test:coverage` executam todas as integrações, sem depender de `RUN_INTEGRATION` e sem pulá-las. Os comandos completos exigem PostgreSQL; use `test:unit`, `test:controllers`, `test:repositories` ou `test:memory` para executar apenas os testes sem banco.
+
+Veja a [matriz de testes, comandos e exclusões da cobertura](docs/testing/README.md), as [verificações executadas](docs/evidencias/verificacoes.md) e o [relatório de auditoria de dependências](docs/security/dependency-audit.md).
+
+## Integração contínua
+
+A pipeline do GitHub Actions roda a suíte completa com PostgreSQL, verifica tipos/mocks e exige cobertura global de linhas e funções **acima de 90%**, com mínimo de 90% por arquivo e nenhum teste pulado. Depois sobe um SonarQube temporário usando o Compose da `main`, importa o LCOV e aguarda o Quality Gate. Não precisa de secrets externos.
+
+O check final **Quality Gate** reúne os resultados. Configure-o como obrigatório na proteção da `main` para bloquear merges. Detalhes, artefatos e reprodução: [pipeline de qualidade](docs/testing/ci.md).
 
 ## Estrutura
 

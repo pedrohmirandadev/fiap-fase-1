@@ -1,5 +1,7 @@
+import type { WorkOrderStatus } from '../domain/work-order/status';
+
 export interface WorkOrderQueries {
-  list(status?: string, limit?: number, offset?: number): Promise<Record<string, unknown>[]>;
+  list(status?: WorkOrderStatus, limit?: number, offset?: number): Promise<Record<string, unknown>[]>;
   detail(id: number): Promise<Record<string, unknown> | undefined>;
   publicView(trackingCode: string): Promise<Record<string, unknown> | undefined>;
   history(id: number): Promise<Record<string, unknown>[]>;

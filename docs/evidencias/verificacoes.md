@@ -32,3 +32,57 @@ Os testes de integração só são executados com `RUN_INTEGRATION=true`; sem es
 - Revisão visual no navegador: navegação entre etapas 4 e 7, renderização de post-its/legenda, entidades/VOs, escala legível e ajuste de largura.
 - A coleção Insomnia foi atualizada com `quote_version`; não foi importada manualmente no aplicativo nesta revisão.
 - Não houve nova análise de vulnerabilidades nesta revisão. Não há publicação de link externo, broker, Event Sourcing, notificações ou suporte multiunidade.
+
+## Exclusões em cascata — 14/10/2026
+
+- `bun run typecheck`: concluído sem erros.
+- `bun run test:coverage`, sem integração: 20 testes passaram; 14 cenários/hooks de integração foram ignorados; nenhuma falha. Cobertura de 99,86% de linhas e 100% de funções nos arquivos medidos. Infraestrutura, apresentação e suporte de testes ficam fora da medição; o limiar de 80% foi mantido.
+- `RUN_INTEGRATION=true DATABASE_URL=postgres://oficina:oficina_local@127.0.0.1:5432/oficina bun --cwd=tests test cascade-deletions.integration.test.ts`: 8 testes passaram; nenhuma falha. Inclui cliente/veículo com múltiplas OS, preservação de catálogo e estoque, exclusão repetida, consultas, rollback, atualização de banco com dados existentes, reaplicação da migração e SQL direto.
+- Os cenários específicos de cascata criam schemas exclusivos em transações revertidas ao final, inclusive as mudanças de schema.
+- `RUN_INTEGRATION=true DATABASE_URL=postgres://oficina:oficina_local@127.0.0.1:5432/oficina bun run test:coverage`: 32 testes passaram, 0 falhas e 295 verificações; inclui os quatro testes HTTP existentes. Cobertura: 99,86% de linhas e 100% de funções nos arquivos medidos.
+- Migração `0004_cascade_deletions.sql` aplicada no PostgreSQL local. Nenhum registro existente foi excluído pela migração.
+- Coleção Insomnia validada como JSON, com IDs únicos e descrições das duas exclusões em cascata. Não foi importada manualmente no aplicativo nesta revisão.
+- Build da imagem Docker concluído. O início do contêiner da API encontrou a porta 3000 ocupada por `bun --watch src/index.ts` do próprio projeto. Essa execução já ativa foi verificada: `/health` respondeu 200 com banco conectado e `/openapi/json` apresentou as duas rotas de cascata atualizadas.
+- Não houve nova análise de vulnerabilidades nesta revisão.
+
+## Cobertura mínima de 90% e integrações obrigatórias — 19/10/2026
+
+Esta revisão substitui o limiar de 80% e a seleção opcional de integrações descritos nos registros históricos acima.
+
+- `bunfig.toml`: limiar de **90% em linhas e funções por arquivo medido**. O escopo de medição foi preservado, incluindo infraestrutura e apresentação.
+- Removidos os três `describe.skipIf` e a condição `RUN_INTEGRATION`. `bun test`, `bun run test` e os comandos de cobertura executam todas as integrações com PostgreSQL real. Banco indisponível causa falha explícita.
+- Adicionados três testes para inicialização do estado, sequências de IDs independentes, cópia de contêineres e isolamento de sessões live/snapshot. O comando `test:unit` também os inclui.
+- Construtores explícitos dos adaptadores de consultas, serviços, oficinas e do store mantêm a injeção/inicialização testável e permitem que o Bun contabilize essas funções corretamente.
+
+| Verificação executada | Resultado |
+| --- | --- |
+| `bun run typecheck` | Aprovado. |
+| `bun run mocks:check` | 9 portas e 29 métodos sincronizados. |
+| `bun run test:unit` | 141 testes passaram, 0 falhas. Não requer PostgreSQL. |
+| `DATABASE_URL=postgres://oficina:oficina_local@127.0.0.1:5432/oficina bun run test` | 200 testes passaram, 0 falhas, nenhum teste pulado; 1.447 asserções. |
+| `DATABASE_URL=postgres://oficina:oficina_local@127.0.0.1:5432/oficina bun test --coverage` | 200 testes passaram, 0 falhas, nenhum teste pulado. |
+| `DATABASE_URL=postgres://oficina:oficina_local@127.0.0.1:5432/oficina bun run test:coverage` | 200 testes passaram, 0 falhas, nenhum teste pulado; 1.447 asserções em 13 arquivos. Código de saída 0. |
+| Resumo `All files` do Bun 1.3.8 | **100% das linhas e 99,61% das funções**. |
+| Verificação de cada linha do relatório de cobertura | Todos os **102 arquivos medidos** têm pelo menos 90% em linhas e funções; menor cobertura de funções: 90%. |
+
+Saída completa: [cobertura-90-2026-10-19.txt](cobertura-90-2026-10-19.txt). Comandos, matriz e exclusões: [estratégia de testes](../testing/README.md). Para executar as integrações, mantenha o PostgreSQL do Compose ativo; não é necessário migrar ou popular os dados de demonstração. Cada cenário usa schema próprio com rollback.
+
+## Pipeline GitHub Actions e SonarQube — 19/10/2026
+
+Validação local do código do workflow, antes de publicação no GitHub:
+
+- A configuração de `origin/main` foi atualizada com `git fetch` e conferida: projeto Sonar `oficina-tech-challenge`, cobertura LCOV e perfil Docker `sonar` existentes foram reutilizados.
+- `.github/workflows/quality.yml` validado pelo `actionlint` v1.7.12, sem erros. Actions fixadas por SHA e imagens Sonar do CI fixadas por digest.
+- `bun install --frozen-lockfile`, `bun run typecheck` e `bun run mocks:check`: aprovados.
+- `bun run test:coverage --reporter=junit --reporter-outfile=coverage/junit.xml`: **201 testes passaram**, nenhum teste pulado, nenhuma falha, 1.450 asserções.
+- `python3 scripts/ci/check_coverage.py`: aprovado. 102 arquivos medidos; todos com pelo menos 90% em linhas/funções. Cobertura global calculada dos contadores LCOV: **100% das linhas e 99,03% das funções**, estritamente acima de 90%. Essa agregação pode diferir do resumo `All files` do Bun.
+- `python3 -m unittest discover -s scripts/ci -p 'test_*.py'`: **14 testes passaram**, incluindo reprovação de cobertura insuficiente, relatórios vazios/inválidos, testes pulados/falhos, bootstrap restrito à instância descartável e exportação sem credenciais.
+- SonarQube Community Build **26.10.0.133078** iniciado em um projeto Docker isolado, com PostgreSQL e volumes próprios. Bootstrap real concluiu troca de senha, criação do projeto, cópia do `Sonar way`, associação do gate e geração de token temporário.
+- SonarScanner CLI **8.1.0.6389** executado com `sonar.qualitygate.wait=true`: **EXECUTION SUCCESS / QUALITY GATE STATUS: PASSED**. Gate global: cobertura de linhas 100%, bugs 0, vulnerabilidades 0. Total final de achados: **0**.
+- Relatórios finais reais: [Quality Gate](ci-2026-10-19/quality-gate.json), [métricas](ci-2026-10-19/metrics.json) e [achados](ci-2026-10-19/issues.json).
+
+A primeira análise identificou seis achados. Foram removidos defaults de senha no código de conexão/migração/seed, reutilizada a conexão central, utilizado o valor validado de `Quantity` e acrescentado teste explícito do rollback de schemas ao arquivo que registra o contrato compartilhado. Não houve supressão de regras ou exclusão desses arquivos da análise. O seed agora exige `ADMIN_PASSWORD` do ambiente; os exemplos locais continuam no Compose e `.env.example`.
+
+Foram também tratados reset de conexão durante a inicialização do servidor e permissões do diretório de trabalho do scanner. A análise final passou em uma instância recriada do zero, inclusive com critérios globais de zero bugs/vulnerabilidades que não dependem de histórico de novo código.
+
+O workflow ainda não foi executado na infraestrutura do GitHub e a proteção da `main` não foi alterada. Após publicar, exija o check **Quality Gate** no ruleset/proteção de branch. Instruções e limites: [pipeline de qualidade](../testing/ci.md). A análise local usou o working tree com alterações ainda não commitadas; os avisos de SCM não impediram a análise. Não houve nova auditoria de dependências com `bun audit` nesta revisão.

@@ -1,10 +1,10 @@
-import postgres from 'postgres';
+import { client as sql } from './connection';
 import { hash } from 'bcryptjs';
 
-const sql = postgres(process.env.DATABASE_URL ?? 'postgres://oficina:oficina_local@localhost:5432/oficina');
 const email = process.env.ADMIN_EMAIL ?? 'admin@oficina.local';
-const password = process.env.ADMIN_PASSWORD ?? 'TroqueEstaSenha123!';
+const password = process.env.ADMIN_PASSWORD;
 try {
+  if (!password || password.length < 8) throw new Error('Defina ADMIN_PASSWORD com pelo menos 8 caracteres no ambiente antes do seed');
   await sql`INSERT INTO users (email, password_hash) VALUES (${email}, ${await hash(password, 10)}) ON CONFLICT (email) DO NOTHING`;
   await sql`INSERT INTO customers (name, document, email, phone) VALUES ('Marina Souza', '52998224725', 'marina@example.test', '+5511999990000') ON CONFLICT (document) DO NOTHING`;
   const [customer] = await sql`SELECT id FROM customers WHERE document = '52998224725'`;

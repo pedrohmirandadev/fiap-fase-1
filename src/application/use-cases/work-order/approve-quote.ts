@@ -1,3 +1,4 @@
+import { ItemKind } from '../../../domain/work-order/work-order-item';
 import type { UnitOfWork } from '../../unit-of-work';
 import { requireFound } from '../../require-found';
 import { QuoteVersion } from '../../../domain/work-order/quote-version';
@@ -12,7 +13,7 @@ export class ApproveQuote {
       const order = requireFound(await context.workOrders.findByTrackingCode(command.trackingCode, true), 'OS');
       const changed = order.approveQuote(command.quoteVersion === undefined ? order.quoteVersion : new QuoteVersion(command.quoteVersion), command.reason);
       const pendingParts = new Map<number, number>();
-      for (const item of order.items.filter(item => item.kind === 'PART' && !item.consumed)) {
+      for (const item of order.items.filter(item => item.kind === ItemKind.Part && !item.consumed)) {
         pendingParts.set(item.catalogId, (pendingParts.get(item.catalogId) ?? 0) + item.quantity.value);
       }
       // Ordem consistente de locks evita que aprovações concorrentes travem em ordem inversa.

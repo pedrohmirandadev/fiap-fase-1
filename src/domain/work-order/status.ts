@@ -1,15 +1,19 @@
-export const workOrderStatuses = [
-  'RECEIVED', 'DIAGNOSIS', 'AWAITING_APPROVAL', 'IN_PROGRESS', 'FINISHED', 'DELIVERED'
-] as const;
-export type WorkOrderStatus = typeof workOrderStatuses[number];
+export enum WorkOrderStatus {
+  Received = 'RECEIVED',
+  Diagnosis = 'DIAGNOSIS',
+  AwaitingApproval = 'AWAITING_APPROVAL',
+  InProgress = 'IN_PROGRESS',
+  Finished = 'FINISHED',
+  Delivered = 'DELIVERED'
+}
 
-const allowedTransitions: Record<WorkOrderStatus, WorkOrderStatus[]> = {
-  RECEIVED: ['DIAGNOSIS'],
-  DIAGNOSIS: ['AWAITING_APPROVAL'],
-  AWAITING_APPROVAL: ['IN_PROGRESS'],
-  IN_PROGRESS: ['FINISHED', 'AWAITING_APPROVAL'],
-  FINISHED: ['DELIVERED'],
-  DELIVERED: []
+const allowedTransitions: Record<WorkOrderStatus, readonly WorkOrderStatus[]> = {
+  [WorkOrderStatus.Received]: [WorkOrderStatus.Diagnosis],
+  [WorkOrderStatus.Diagnosis]: [WorkOrderStatus.AwaitingApproval],
+  [WorkOrderStatus.AwaitingApproval]: [WorkOrderStatus.InProgress],
+  [WorkOrderStatus.InProgress]: [WorkOrderStatus.Finished, WorkOrderStatus.AwaitingApproval],
+  [WorkOrderStatus.Finished]: [WorkOrderStatus.Delivered],
+  [WorkOrderStatus.Delivered]: []
 };
 
 export function canTransition(from: WorkOrderStatus, to: WorkOrderStatus): boolean {
@@ -19,4 +23,3 @@ export function canTransition(from: WorkOrderStatus, to: WorkOrderStatus): boole
 export function assertTransition(from: WorkOrderStatus, to: WorkOrderStatus): void {
   if (!canTransition(from, to)) throw new Error(`Transição inválida: ${from} -> ${to}`);
 }
-

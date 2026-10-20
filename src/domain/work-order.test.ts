@@ -1,11 +1,12 @@
+import { WorkOrderStatus } from './work-order/status';
 import { describe, expect, it } from 'bun:test';
 import { assertTransition, canTransition, isValidCpfCnpj, isValidPlate, quoteTotalCents } from './work-order';
 
 describe('regras de domínio da OS', () => {
   it('aceita transições permitidas e rejeita as demais', () => {
-    expect(canTransition('RECEIVED', 'DIAGNOSIS')).toBe(true);
-    expect(canTransition('DELIVERED', 'RECEIVED')).toBe(false);
-    expect(() => assertTransition('RECEIVED', 'DELIVERED')).toThrow('Transição inválida');
+    expect(canTransition(WorkOrderStatus.Received, WorkOrderStatus.Diagnosis)).toBe(true);
+    expect(canTransition(WorkOrderStatus.Delivered, WorkOrderStatus.Received)).toBe(false);
+    expect(() => assertTransition(WorkOrderStatus.Received, WorkOrderStatus.Delivered)).toThrow('Transição inválida');
   });
   it('calcula orçamento em centavos e rejeita quantidades inválidas', () => {
     expect(quoteTotalCents([{ quantity: 2, unitPriceCents: 1000 }, { quantity: 1, unitPriceCents: 500 }])).toBe(2500);

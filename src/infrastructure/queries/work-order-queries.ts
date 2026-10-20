@@ -1,8 +1,10 @@
 import type { WorkOrderQueries } from '../../application/work-order-queries';
-import { PostgresDao } from '../database/postgres-dao';
+import type { WorkOrderStatus } from '../../domain/work-order/status';
+import { PostgresDao, type SqlConnection } from '../database/postgres-dao';
 
 export class PgWorkOrderQueries extends PostgresDao implements WorkOrderQueries {
-  list(status?: string, limit = 50, offset = 0) {
+  constructor(connection: SqlConnection) { super(connection); }
+  list(status?: WorkOrderStatus, limit = 50, offset = 0) {
     return this.rows<Record<string, unknown>>('SELECT w.*, c.name AS customer_name, v.plate, v.brand, v.model FROM work_orders w JOIN customers c ON c.id = w.customer_id JOIN vehicles v ON v.id = w.vehicle_id WHERE ($1::text IS NULL OR w.status::text = $1) ORDER BY w.id DESC LIMIT $2 OFFSET $3', [status ?? null, limit, offset]);
   }
   async detail(id: number) {

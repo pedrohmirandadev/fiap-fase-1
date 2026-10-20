@@ -1,6 +1,5 @@
 [test]
-coverage = true
 coverageReporter = ["text", "lcov"]
 coverageDir = "coverage"
-coverageThreshold = { lines = 0.8, functions = 0.8 }
-coveragePathIgnorePatterns = ["src/infrastructure/**", "src/presentation/**", "src/application/errors.ts", "**/*.test.ts"]
+coverageThreshold = { lines = 0.9, functions = 0.9 }
+coveragePathIgnorePatterns = ["src/index.ts", "src/infrastructure/database/connection.ts", "src/infrastructure/database/migrate.ts", "src/infrastructure/database/seed.ts", "**/*.test.ts", "tests/support/**", "tests/mocks/**", "tests/factories/**"]

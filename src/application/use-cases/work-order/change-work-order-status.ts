@@ -1,6 +1,6 @@
-import type { WorkOrderStatus } from '../../../domain/work-order/status';
+import { WorkOrderStatus } from '../../../domain/work-order/status';
 import type { UnitOfWork } from '../../unit-of-work';
-import { ApplicationError } from '../../errors';
+import { ApplicationError, ErrorKind } from '../../errors';
 import { StartDiagnosis } from './start-diagnosis';
 import { SubmitQuote } from './submit-quote';
 import { FinishRepair } from './finish-repair';
@@ -21,11 +21,11 @@ export class ChangeWorkOrderStatus {
   execute(id: number, target: WorkOrderStatus, note?: string) {
     const command = { workOrderId: id, note };
     switch (target) {
-      case 'DIAGNOSIS': return this.diagnosis.execute(command);
-      case 'AWAITING_APPROVAL': return this.submit.execute(command);
-      case 'FINISHED': return this.finish.execute(command);
-      case 'DELIVERED': return this.deliver.execute(command);
-      default: throw new ApplicationError('conflict', 'Transição inválida; execução exige aprovação do orçamento');
+      case WorkOrderStatus.Diagnosis: return this.diagnosis.execute(command);
+      case WorkOrderStatus.AwaitingApproval: return this.submit.execute(command);
+      case WorkOrderStatus.Finished: return this.finish.execute(command);
+      case WorkOrderStatus.Delivered: return this.deliver.execute(command);
+      default: throw new ApplicationError(ErrorKind.Conflict, 'Transição inválida; execução exige aprovação do orçamento');
     }
   }
 }

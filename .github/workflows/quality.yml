@@ -1,0 +1,173 @@
+name: Qualidade
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  BUN_VERSION: '1.3.8'
+
+jobs:
+  tests:
+    name: Testes e cobertura
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: oficina
+          POSTGRES_USER: oficina
+          POSTGRES_PASSWORD: oficina_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U oficina -d oficina"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgres://oficina:oficina_ci@127.0.0.1:5432/oficina
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Instalar Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Instalar dependências pelo lockfile
+        run: bun install --frozen-lockfile
+
+      - name: Verificar tipos
+        run: bun run typecheck
+
+      - name: Verificar mocks gerados
+        run: bun run mocks:check
+
+      - name: Verificar o validador de cobertura
+        run: python3 -m unittest discover -s scripts/ci -p 'test_*.py'
+
+      - name: Executar todos os testes com PostgreSQL e cobertura
+        run: |
+          mkdir -p coverage
+          bun run test:coverage --reporter=junit --reporter-outfile=coverage/junit.xml
+
+      - name: Exigir cobertura acima de 90% e nenhum teste pulado
+        run: python3 scripts/ci/check_coverage.py
+
+      - name: Preservar evidências de testes
+        if: ${{ always() }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: test-reports
+          path: coverage/
+          if-no-files-found: warn
+          retention-days: 14
+
+  sonarqube:
+    name: SonarQube
+    needs: tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      COMPOSE_PROJECT_NAME: oficina-ci-${{ github.run_id }}-${{ github.run_attempt }}
+      SONAR_HOST_URL: http://localhost:9000
+      COMPOSE_FILE: docker-compose.yml:.github/sonar-ci.compose.yml
+      SONAR_DB_PASSWORD: sonarqube_ci
+      SONAR_CI_BOOTSTRAP: 'true'
+    steps:
+      - name: Checkout com histórico completo
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Instalar Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Instalar dependências para a análise TypeScript
+        run: bun install --frozen-lockfile
+
+      - name: Recuperar cobertura dos testes
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
+        with:
+          name: test-reports
+          path: coverage
+
+      - name: Preparar o host e iniciar o SonarQube da main
+        run: |
+          sudo sysctl -w vm.max_map_count=524288
+          sudo sysctl -w fs.file-max=131072
+          docker compose --profile sonar up -d sonarqube
+
+      - name: Criar credenciais temporárias, projeto e Quality Gate
+        run: python3 scripts/ci/bootstrap_sonar.py
+
+      - name: Analisar código e aguardar o Quality Gate
+        run: |
+          docker compose --profile sonar run --rm \
+            --user "$(id -u):$(id -g)" \
+            --env SONAR_USER_HOME=/tmp/sonar-cache \
+            sonar-scanner \
+            -Dsonar.working.directory=/usr/src/.scannerwork \
+            -Dsonar.qualitygate.wait=true \
+            -Dsonar.qualitygate.timeout=600
+
+      - name: Salvar logs do SonarQube
+        if: ${{ always() }}
+        run: |
+          mkdir -p sonar-reports
+          docker compose --profile sonar logs --no-color sonarqube sonar-db > sonar-reports/services.log 2>&1
+          if [ -f .scannerwork/report-task.txt ]; then
+            cp .scannerwork/report-task.txt sonar-reports/
+          fi
+
+      - name: Exportar Quality Gate, métricas e achados
+        if: ${{ always() }}
+        run: python3 scripts/ci/export_sonar.py
+
+      - name: Preservar evidências do SonarQube
+        if: ${{ always() }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: sonar-reports
+          path: sonar-reports/
+          retention-days: 14
+
+      - name: Encerrar serviços e remover volumes temporários
+        if: ${{ always() }}
+        run: docker compose --profile sonar down --volumes --remove-orphans
+
+  quality-gate:
+    name: Quality Gate
+    needs: [tests, sonarqube]
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Exigir sucesso de todos os checks
+        env:
+          TESTS_RESULT: ${{ needs.tests.result }}
+          SONAR_RESULT: ${{ needs.sonarqube.result }}
+        run: |
+          if [ "$TESTS_RESULT" != success ] || [ "$SONAR_RESULT" != success ]; then
+            echo 'Testes, cobertura ou SonarQube não foram aprovados.'
+            exit 1
+          fi
+          echo 'Testes, cobertura e Quality Gate do SonarQube aprovados.'
