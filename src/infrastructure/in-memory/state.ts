@@ -48,7 +48,9 @@ export function copyState(state: MemoryState): MemoryState {
 }
 
 export class InMemoryStore {
-  state: MemoryState = emptyState();
+  state: MemoryState;
+
+  constructor() { this.state = emptyState(); }
 
   addAdminUser(user: AdminUser): void {
     this.state.users.set(user.id, user);

@@ -1,6 +1,7 @@
-import { ApplicationError } from '../../application/errors';
+import { WorkOrderStatus } from '../../domain/work-order/status';
+import { ApplicationError, ErrorKind } from '../../application/errors';
 import { WorkOrder } from '../../domain/work-order/work-order';
-import { WorkOrderItem } from '../../domain/work-order/work-order-item';
+import { WorkOrderItem, ItemKind } from '../../domain/work-order/work-order-item';
 import { QuoteDecision } from '../../domain/work-order/quote-decision';
 import { StatusChange } from '../../domain/work-order/status-change';
 import type { WorkOrderRepository } from '../../domain/work-order/work-order-repository';
@@ -16,14 +17,14 @@ export class InMemoryWorkOrderRepository implements WorkOrderRepository {
     const state = this.session.state;
     const vehicle = state.vehicles.get(order.vehicleId);
     if (!state.customers.has(order.customerId) || !vehicle || !vehicle.belongsTo(order.customerId)) {
-      throw new ApplicationError('conflict', 'Cliente ou veículo inválido');
+      throw new ApplicationError(ErrorKind.Conflict, 'Cliente ou veículo inválido');
     }
     if ([...state.workOrders.values()].some(record => record.order.id !== order.id && record.order.trackingCode.equals(order.trackingCode))) {
-      throw new ApplicationError('conflict', 'Código de acompanhamento duplicado');
+      throw new ApplicationError(ErrorKind.Conflict, 'Código de acompanhamento duplicado');
     }
     for (const item of order.items) {
-      if (!(item.kind === 'SERVICE' ? state.services : state.parts).has(item.catalogId)) {
-        throw new ApplicationError('conflict', 'Item de catálogo não encontrado');
+      if (!(item.kind === ItemKind.Service ? state.services : state.parts).has(item.catalogId)) {
+        throw new ApplicationError(ErrorKind.Conflict, 'Item de catálogo não encontrado');
       }
     }
     const id = order.id ?? nextId(state, 'workOrder');
@@ -37,9 +38,9 @@ export class InMemoryWorkOrderRepository implements WorkOrderRepository {
     state.workOrders.set(id, {
       order: persisted, quoteTotalCents: order.quote.cents,
       openedAt: state.workOrders.get(id)?.openedAt ?? order.history[0]?.createdAt ?? new Date(), updatedAt: new Date(),
-      startedAt: history.find(change => change.to === 'IN_PROGRESS')?.createdAt,
-      finishedAt: history.find(change => change.to === 'FINISHED')?.createdAt,
-      deliveredAt: history.find(change => change.to === 'DELIVERED')?.createdAt
+      startedAt: history.find(change => change.to === WorkOrderStatus.InProgress)?.createdAt,
+      finishedAt: history.find(change => change.to === WorkOrderStatus.Finished)?.createdAt,
+      deliveredAt: history.find(change => change.to === WorkOrderStatus.Delivered)?.createdAt
     });
     return persisted;
   }

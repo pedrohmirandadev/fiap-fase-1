@@ -1,4 +1,4 @@
-import { DomainError } from './domain-error';
+import { DomainError, DomainErrorKind } from './domain-error';
 import { Quantity } from './value-objects';
 
 export class StockBalance {
@@ -8,7 +8,7 @@ export class StockBalance {
   }
   receive(quantity: Quantity): StockBalance { return new StockBalance(this.value + quantity.value); }
   withdraw(quantity: Quantity): StockBalance {
-    if (quantity.value > this.value) throw new DomainError('Estoque não pode ficar negativo', 'conflict');
+    if (quantity.value > this.value) throw new DomainError('Estoque não pode ficar negativo', DomainErrorKind.Conflict);
     return new StockBalance(this.value - quantity.value);
   }
   equals(other: StockBalance): boolean { return this.value === other.value; }

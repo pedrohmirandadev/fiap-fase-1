@@ -766,7 +766,7 @@
       "_id": "req_customer_delete_selected",
       "_type": "request",
       "parentId": "grp_customers",
-      "name": "Excluir cliente selecionado (use registro descartável)",
+      "name": "Excluir cliente, veículos e OS em cascata (registro descartável)",
       "method": "DELETE",
       "url": "{{ _.base_url }}/api/v1/customers/{{ _.customer_id }}",
       "headers": [
@@ -774,13 +774,14 @@
           "name": "Authorization",
           "value": "Bearer {{ _.jwt }}"
         }
-      ]
+      ],
+      "description": "Exclusão física do cliente e de seus veículos e OS, incluindo itens, decisões e histórico das ordens. Mantém catálogo, saldo, movimentos de estoque sem o vínculo à OS e eventos de auditoria."
     },
     {
       "_id": "req_vehicle_delete_selected",
       "_type": "request",
       "parentId": "grp_customers",
-      "name": "Excluir veículo selecionado (use registro descartável)",
+      "name": "Excluir veículo e OS em cascata (registro descartável)",
       "method": "DELETE",
       "url": "{{ _.base_url }}/api/v1/vehicles/{{ _.vehicle_id }}",
       "headers": [
@@ -788,7 +789,8 @@
           "name": "Authorization",
           "value": "Bearer {{ _.jwt }}"
         }
-      ]
+      ],
+      "description": "Exclusão física do veículo e de suas OS, incluindo itens, decisões e histórico das ordens. Mantém cliente, catálogo, saldo, movimentos de estoque sem o vínculo à OS e eventos de auditoria."
     }
   ]
 }

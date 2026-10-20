@@ -33,7 +33,7 @@
 - [ ] A branch/tag/hash corresponde exatamente ao código do vídeo e da documentação.
 - [ ] Repositório público e branch principal protegida com mudanças via Pull Request.
 - [ ] README executado a partir de clone limpo.
-- [ ] Testes executados e cobertura mínima de 80% nos domínios críticos evidenciada.
+- [ ] Testes executados e cobertura mínima de 90% em linhas e funções por arquivo medido evidenciada, com integrações executadas e nenhum teste pulado.
 - [ ] Documentação DDD representa a implementação e exportação está versionada.
 - [ ] Links abrem sem solicitação manual de permissão.
 - [ ] Nenhum segredo real ou dado pessoal real foi publicado.

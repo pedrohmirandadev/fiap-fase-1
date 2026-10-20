@@ -1,4 +1,4 @@
-import { ApplicationError } from '../../application/errors';
+import { ApplicationError, ErrorKind } from '../../application/errors';
 import { Part } from '../../domain/part/part';
 import type { PartRepository } from '../../domain/part/part-repository';
 import { InventoryMovement } from '../../domain/part/inventory-movement';
@@ -14,7 +14,7 @@ export class PgPartRepository extends PostgresDao implements PartRepository {
     const row = part.id === undefined
       ? await this.first<Row>('INSERT INTO parts (sku, name, description, price_cents, stock_quantity, minimum_stock) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *', [part.sku, part.name, part.description ?? null, part.price.cents, part.stockQuantity, part.minimumStock])
       : await this.first<Row>('UPDATE parts SET name = $2, description = $3, price_cents = $4, minimum_stock = $5, active = $6, stock_quantity = $7, version = version + 1, updated_at = now() WHERE id = $1 AND version = $8 RETURNING *', [part.id, part.name, part.description ?? null, part.price.cents, part.minimumStock, part.active, part.stockQuantity, part.version]);
-    if (!row) throw new ApplicationError('conflict', 'Peça alterada por outra operação; tente novamente');
+    if (!row) throw new ApplicationError(ErrorKind.Conflict, 'Peça alterada por outra operação; tente novamente');
     return map(row);
   }
   async recordMovement(movement: InventoryMovement) { await this.rows('INSERT INTO inventory_movements (part_id, work_order_id, quantity_delta, reason, created_at) VALUES ($1, $2, $3, $4, $5)', [movement.partId, movement.workOrderId ?? null, movement.quantityDelta, movement.reason, movement.createdAt]); }

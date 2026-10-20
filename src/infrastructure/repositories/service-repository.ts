@@ -1,11 +1,12 @@
 import { Service } from '../../domain/service/service';
 import type { ServiceRepository } from '../../domain/service/service-repository';
 import { Money } from '../../domain/shared/value-objects';
-import { PostgresDao } from '../database/postgres-dao';
+import { PostgresDao, type SqlConnection } from '../database/postgres-dao';
 
 type Row = { id: number; name: string; description: string | null; price_cents: number; estimated_minutes: number; active: boolean };
 const map = (row: Row) => new Service(row.id, row.name, row.description ?? undefined, new Money(row.price_cents), row.estimated_minutes, row.active);
 export class PgServiceRepository extends PostgresDao implements ServiceRepository {
+  constructor(connection: SqlConnection) { super(connection); }
   async findById(id: number) { const row = await this.first<Row>('SELECT * FROM services WHERE id = $1', [id]); return row && map(row); }
   async findAll() { return (await this.rows<Row>('SELECT * FROM services ORDER BY id')).map(map); }
   async save(service: Service) {

@@ -10,12 +10,18 @@
     "db:seed": "bun src/infrastructure/database/seed.ts",
     "db:setup": "bun run db:migrate && bun run db:seed",
     "test": "bun test",
-    "test:memory": "bun --cwd=tests test in-memory.test.ts",
+    "test:memory": "bun test ./tests/in-memory.test.ts ./tests/repositories.test.ts",
     "test:coverage": "bun test --coverage",
+    "mocks:generate": "bun scripts/generate-test-mocks.ts",
+    "mocks:check": "bun scripts/generate-test-mocks.ts --check",
     "test:sonar": "bun test --coverage --coverage-reporter=text --coverage-reporter=lcov",
     "sonar:scan": "docker compose --profile sonar run --rm sonar-scanner",
     "typecheck": "tsc --noEmit",
-    "security:audit": "bun audit"
+    "security:audit": "bun audit",
+    "test:unit": "bun test ./src/domain ./tests/domain.test.ts ./tests/application.test.ts ./tests/infrastructure.test.ts ./tests/state.test.ts",
+    "test:controllers": "bun test ./tests/controllers.test.ts",
+    "test:repositories": "bun test ./tests/repositories.test.ts",
+    "test:integration": "bun test ./tests/api.integration.test.ts ./tests/repositories.integration.test.ts ./tests/cascade-deletions.integration.test.ts"
   },
   "dependencies": {
     "@elysia/cors": "^1.4.2",

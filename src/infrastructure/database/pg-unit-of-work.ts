@@ -20,7 +20,11 @@ export function repositoryContext(sql: SqlConnection): RepositoryContext {
 }
 
 export class PgUnitOfWork implements UnitOfWork {
+  constructor(private readonly connection: SqlConnection = client) {}
   async run<T>(operation: (context: RepositoryContext) => Promise<T>): Promise<T> {
-    return await client.begin(async transaction => operation(repositoryContext(transaction))) as T;
+    if ('savepoint' in this.connection) {
+      return await this.connection.savepoint(async transaction => operation(repositoryContext(transaction))) as T;
+    }
+    return await this.connection.begin(async transaction => operation(repositoryContext(transaction))) as T;
   }
 }
