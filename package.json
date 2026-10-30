@@ -12,6 +12,8 @@
     "test": "bun test",
     "test:memory": "bun test ./tests/in-memory.test.ts ./tests/repositories.test.ts",
     "test:coverage": "bun test --coverage",
+    "test:docker": "docker compose -p oficina-tests --profile test run --build --rm test-runner",
+    "test:integration:docker": "docker compose -p oficina-tests --profile test run --build --rm test-runner bun run test:integration",
     "mocks:generate": "bun scripts/generate-test-mocks.ts",
     "mocks:check": "bun scripts/generate-test-mocks.ts --check",
     "test:sonar": "bun test --coverage --coverage-reporter=text --coverage-reporter=lcov",

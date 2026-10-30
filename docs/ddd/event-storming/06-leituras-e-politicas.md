@@ -1,15 +1,15 @@
-# 06 — Modelos de leitura e políticas
+# 06: Modelos de leitura e políticas
 
-**Objetivo:** Mostrar informação para decidir e condições para aceitar a ação.
+Esta etapa mostra quais informações orientam uma decisão e quais condições permitem a ação.
 
 [Visualizador](index.html) · [SVG](06-leituras-e-politicas.svg) · [Mermaid](06.mmd) · [Índice](../README.md)
 
 ![Quadro da etapa 6](06-leituras-e-politicas.svg)
 
-Post-its ML mostram cadastro, catálogo, saldo, movimentos, fila de OS, detalhe administrativo e acompanhamento público. A consulta pública inclui total e quoteVersion. A intenção de aprovar deve levar a versão consultada nas novas integrações.
+Os post-its ML representam consultas de cadastros, catálogo, saldo, movimentações, fila de OS, detalhes administrativos e acompanhamento público. A consulta pública retorna o total e `quoteVersion`. Uma integração nova deve enviar essa versão ao aprovar o orçamento.
 
-Políticas: usar veículo do cliente; copiar preço/descrição do catálogo; conferir disponibilidade na criação; consumir só na aprovação; pausar adicional; consumir somente itens pendentes na retomada; nunca permitir saldo negativo; não executar sem aprovação.
+As políticas exigem que a OS use um veículo do cliente e guarde uma cópia do preço e da descrição do catálogo. O sistema confere a disponibilidade ao criar a OS e consome as peças somente após a aprovação. Um reparo adicional pausa a execução; ao retomá-la, a API consome apenas os itens ainda pendentes. O saldo não pode ficar negativo e o serviço não pode começar sem aprovação.
 
-Políticas do quadro são implementadas como regras síncronas dos agregados/handlers. Não existe daemon de notificações, consumidor de eventos ou atualização assíncrona de read models. O tempo médio é uma leitura analítica; não origina comando de mutação.
+Os agregados e handlers aplicam essas políticas de forma síncrona. O sistema não tem serviço de notificações, consumidor de eventos nem atualização assíncrona dos modelos de leitura. O tempo médio é uma consulta analítica e não altera dados.
 
-**Saída:** leitura → decisão → comando e regras que justificam cada ramificação.
+O resultado liga leitura, decisão, comando e as regras de cada ramificação.

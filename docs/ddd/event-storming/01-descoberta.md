@@ -1,16 +1,16 @@
-# 01 — Descoberta livre
+# 01: Descoberta livre
 
-**Objetivo:** Levantar fatos sem definir a solução primeiro.
+Nesta etapa, o grupo lista os fatos do negócio antes de escolher uma solução.
 
 [Visualizador](index.html) · [SVG](01-descoberta.svg) · [Mermaid](01.mmd) · [Índice](../README.md)
 
 ![Quadro da etapa 1](01-descoberta.svg)
 
-Os post-its estão deliberadamente dispersos. Leia cada fato no passado, identifique termos semelhantes e confirme o significado com o grupo. O catálogo inclui recebimento, aprovação/rejeição, pausas, revisões, consumo, saldo e mudanças de cadastro.
+Os post-its aparecem fora de ordem. Leia cada fato no passado, agrupe termos parecidos e confirme o significado com o grupo. O catálogo cobre recebimento, aprovação e rejeição, pausas, revisões, consumo, saldo e alterações cadastrais.
 
-Não precisamos transformar todo fato em uma mensagem. E01–E17 têm envelopes registrados no código. C01–C12 representam comportamentos de cadastro existentes sem envelope próprio. Falha de estoque, consulta de progresso e futuras notificações não são apresentadas como eventos aceitos.
+Nem todo fato precisa gerar uma mensagem. O código registra envelopes para E01 a E17. C01 a C12 representam mudanças de cadastro persistidas sem envelope próprio. Falha de estoque, consulta de progresso e notificações futuras não aparecem como eventos aceitos.
 
-**Saída da etapa:** catálogo de 29 fatos com significado e origem. Questões ainda não decididas seguem para a etapa 3.
+Ao concluir esta etapa, o catálogo contém 29 fatos, cada um com significado e origem. As perguntas em aberto seguem para a etapa 3.
 
 ## Catálogo de fatos
 

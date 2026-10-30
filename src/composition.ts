@@ -1,8 +1,5 @@
 import type { RepositoryContext, UnitOfWork } from './application/unit-of-work';
 import type { WorkOrderQueries } from './application/work-order-queries';
-import { client } from './infrastructure/database/connection';
-import { PgUnitOfWork, repositoryContext } from './infrastructure/database/pg-unit-of-work';
-import { PgWorkOrderQueries } from './infrastructure/queries/work-order-queries';
 import { CreateCustomer } from './application/use-cases/customer/create-customer';
 import { GetCustomer } from './application/use-cases/customer/get-customer';
 import { ListCustomers } from './application/use-cases/customer/list-customers';
@@ -51,4 +48,3 @@ export function createUseCases(context: RepositoryContext, unitOfWork: UnitOfWor
 }
 
 export type UseCases = ReturnType<typeof createUseCases>;
-export const useCases = createUseCases(repositoryContext(client), new PgUnitOfWork(), new PgWorkOrderQueries(client));

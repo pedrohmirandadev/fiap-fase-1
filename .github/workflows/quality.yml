@@ -26,18 +26,16 @@ jobs:
       postgres:
         image: postgres:17-alpine
         env:
-          POSTGRES_DB: oficina
-          POSTGRES_USER: oficina
-          POSTGRES_PASSWORD: oficina_ci
+          POSTGRES_HOST_AUTH_METHOD: trust
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U oficina -d oficina"
+          --health-cmd "pg_isready -U postgres -d postgres"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 20
     env:
-      DATABASE_URL: postgres://oficina:oficina_ci@127.0.0.1:5432/oficina
+      DATABASE_URL: postgres://postgres@127.0.0.1:5432/postgres
     steps:
       - name: Checkout
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -87,7 +85,6 @@ jobs:
       COMPOSE_PROJECT_NAME: oficina-ci-${{ github.run_id }}-${{ github.run_attempt }}
       SONAR_HOST_URL: http://localhost:9000
       COMPOSE_FILE: docker-compose.yml:.github/sonar-ci.compose.yml
-      SONAR_DB_PASSWORD: sonarqube_ci
       SONAR_CI_BOOTSTRAP: 'true'
     steps:
       - name: Checkout com histórico completo
@@ -110,18 +107,44 @@ jobs:
           name: test-reports
           path: coverage
 
+      # Use distinct generated credentials for the ephemeral SonarQube Compose stack.
+      - name: Gerar ambiente temporário do Compose
+        run: |
+          set -euo pipefail
+          umask 077
+          postgres_password="$(openssl rand -hex 32)"
+          jwt_secret="$(openssl rand -hex 32)"
+          admin_password="$(openssl rand -hex 32)"
+          sonar_db_password="$(openssl rand -hex 32)"
+          printf '::add-mask::%s\n' "$postgres_password" "$jwt_secret" "$admin_password" "$sonar_db_password"
+          env_file="$RUNNER_TEMP/sonar-compose.env"
+          temp_file="$env_file.tmp"
+          {
+            printf 'POSTGRES_DB=oficina_ci\n'
+            printf 'POSTGRES_USER=oficina_ci\n'
+            printf 'POSTGRES_PASSWORD=%s\n' "$postgres_password"
+            printf 'JWT_SECRET=%s\n' "$jwt_secret"
+            printf 'ADMIN_EMAIL=ci@example.invalid\n'
+            printf 'ADMIN_PASSWORD=%s\n' "$admin_password"
+            printf 'SONAR_DB_PASSWORD=%s\n' "$sonar_db_password"
+          } > "$temp_file"
+          mv "$temp_file" "$env_file"
+
+      - name: Validar configuração do Compose para o SonarQube
+        run: docker compose --env-file "$RUNNER_TEMP/sonar-compose.env" config --quiet
+
       - name: Preparar o host e iniciar o SonarQube da main
         run: |
           sudo sysctl -w vm.max_map_count=524288
           sudo sysctl -w fs.file-max=131072
-          docker compose --profile sonar up -d sonarqube
+          docker compose --env-file "$RUNNER_TEMP/sonar-compose.env" --profile sonar up -d sonarqube
 
       - name: Criar credenciais temporárias, projeto e Quality Gate
         run: python3 scripts/ci/bootstrap_sonar.py
 
       - name: Analisar código e aguardar o Quality Gate
         run: |
-          docker compose --profile sonar run --rm \
+          docker compose --env-file "$RUNNER_TEMP/sonar-compose.env" --profile sonar run --rm \
             --user "$(id -u):$(id -g)" \
             --env SONAR_USER_HOME=/tmp/sonar-cache \
             sonar-scanner \
@@ -133,7 +156,10 @@ jobs:
         if: ${{ always() }}
         run: |
           mkdir -p sonar-reports
-          docker compose --profile sonar logs --no-color sonarqube sonar-db > sonar-reports/services.log 2>&1
+          : > sonar-reports/services.log
+          if [ -f "$RUNNER_TEMP/sonar-compose.env" ]; then
+            docker compose --env-file "$RUNNER_TEMP/sonar-compose.env" --profile sonar logs --no-color sonarqube sonar-db > sonar-reports/services.log 2>&1 || true
+          fi
           if [ -f .scannerwork/report-task.txt ]; then
             cp .scannerwork/report-task.txt sonar-reports/
           fi
@@ -152,7 +178,14 @@ jobs:
 
       - name: Encerrar serviços e remover volumes temporários
         if: ${{ always() }}
-        run: docker compose --profile sonar down --volumes --remove-orphans
+        run: |
+          status=0
+          env_file="$RUNNER_TEMP/sonar-compose.env"
+          if [ -f "$env_file" ]; then
+            docker compose --env-file "$env_file" --profile sonar down --volumes --remove-orphans || status=$?
+          fi
+          rm -f "$env_file" "$env_file.tmp"
+          exit "$status"
 
   quality-gate:
     name: Quality Gate

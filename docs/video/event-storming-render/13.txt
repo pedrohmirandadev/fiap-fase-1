@@ -1,1 +1,0 @@
-Propor um reparo adicional, finalizar o serviço e registrar a entrega são comandos distintos. Eles usam comportamentos descritivos, com suas próprias condições de execução.

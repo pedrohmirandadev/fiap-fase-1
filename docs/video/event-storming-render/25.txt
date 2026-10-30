@@ -1,1 +1,0 @@
-Para explorar o material, abra a página local de Event Storming. Navegue pelas oito etapas e use ampliar, reduzir, ajustar largura ou baixar o SVG de cada quadro.

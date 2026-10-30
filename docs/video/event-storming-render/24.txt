@@ -1,1 +1,0 @@
-A aprovação coordena ordem e estoque de forma síncrona e transacional. Os eventos são registrados junto com a mudança. Não há broker, notificações ou Event Sourcing no projeto atual.

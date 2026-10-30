@@ -6,7 +6,9 @@ import type { RepositoryEnvironment } from './repository-contract';
 
 /** Banco real, schema privado por cenário e rollback até do DDL. */
 export function createPostgresTestEnvironment() {
-  const sql = postgres(process.env.DATABASE_URL ?? 'postgres://oficina:oficina_local@localhost:5432/oficina', {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) throw new Error('DATABASE_URL must be configured to run PostgreSQL integration tests');
+  const sql = postgres(databaseUrl, {
     max: 1, connect_timeout: 5, onnotice: () => {}
   });
   return {

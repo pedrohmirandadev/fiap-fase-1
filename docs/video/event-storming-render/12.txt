@@ -1,1 +1,0 @@
-O atendente recebe a ordem. A equipe inicia o diagnóstico e apresenta o orçamento. O cliente aprova ou rejeita a proposta. Cada intenção possui um handler específico.

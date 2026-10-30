@@ -1,1 +1,0 @@
-Na sexta etapa, acrescentamos modelos de leitura e políticas. A leitura fornece informações para que o ator decida qual comando enviar.

@@ -1,1 +1,0 @@
-A terceira etapa registra pontos de atenção. Cada dúvida tem uma decisão explícita ou permanece identificada como questão em aberto.

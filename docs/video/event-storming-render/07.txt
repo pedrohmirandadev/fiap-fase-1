@@ -1,1 +1,0 @@
-A criação confere o estoque, mas não reserva peças. A aprovação verifica a disponibilidade novamente e confirma saldo, decisão e eventos em uma única transação.

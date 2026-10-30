@@ -1,1 +1,0 @@
-O mapa também inclui identidade administrativa e operação da oficina. Esses limites são lógicos dentro do monólito; não representam microsserviços independentes.

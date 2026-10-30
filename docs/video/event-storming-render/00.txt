@@ -1,1 +1,0 @@
-Este vídeo apresenta a página de Event Storming da oficina. As oito etapas mostram a evolução da descoberta dos fatos até o desenho dos agregados e dos contextos.

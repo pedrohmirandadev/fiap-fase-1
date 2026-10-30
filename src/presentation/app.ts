@@ -2,9 +2,7 @@ import { Elysia, t } from 'elysia';
 import { cors } from '@elysia/cors';
 import { jwt } from '@elysia/jwt';
 import { openapi } from '@elysia/openapi';
-import { sql } from 'drizzle-orm';
-import { db } from '../infrastructure/database/connection';
-import { useCases, type UseCases } from '../composition';
+import type { UseCases } from '../composition';
 import { ApplicationError, ErrorKind } from '../application/errors';
 import { DomainError, DomainErrorKind } from '../domain/shared/domain-error';
 import { createCustomerRoutes } from './routes/customer-routes';
@@ -23,7 +21,10 @@ export interface AppDependencies {
 }
 
 export function createApp(dependencies: AppDependencies) {
-  const jwtSecret = dependencies.jwtSecret ?? process.env.JWT_SECRET ?? 'local-demo-secret-change-before-sharing-123456';
+  const jwtSecret = dependencies.jwtSecret ?? process.env.JWT_SECRET;
+  if (!jwtSecret || jwtSecret.length < 32) {
+    throw new Error('JWT_SECRET must be configured with at least 32 characters');
+  }
   const adminGuard = new Elysia()
     .use(jwt({ name: 'jwt', secret: jwtSecret, exp: '2h' }))
     .derive({ as: 'global' }, async ({ headers, jwt }) => {
@@ -77,5 +78,3 @@ export function createApp(dependencies: AppDependencies) {
     );
 
 }
-
-export const app = createApp({ useCases, checkDatabase: async () => { await db.execute(sql`SELECT 1`); } });

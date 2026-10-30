@@ -10,6 +10,7 @@ import { DomainError, DomainErrorKind } from '../src/domain/shared/domain-error'
 import { WorkOrderStatus as Status } from '../src/domain/work-order/status';
 import { ItemKind } from '../src/domain/work-order/work-order-item';
 import { FIXTURE_ADMIN_PASSWORD } from './factories';
+import { TEST_JWT_SECRET } from './support/test-secrets';
 import * as views from '../src/presentation/presenters';
 
 describe('Controllers HTTP com aplicação real e persistência em memória', () => {
@@ -25,7 +26,7 @@ describe('Controllers HTTP com aplicação real e persistência em memória', ()
       expect((await h.request('GET', `/api/v1${path}`)).status).toBe(401);
       expect((await h.request('GET', `/api/v1${path}`, undefined, 'invalid')).status).toBe(401);
     }
-    const signer = new Elysia().use(jwt({ name: 'jwt', secret: 'isolated-test-secret-12345678901234567890' }))
+    const signer = new Elysia().use(jwt({ name: 'jwt', secret: TEST_JWT_SECRET }))
       .get('/expired', ({ jwt }) => jwt.sign({ sub: '1', exp: 1 }))
       .get('/no-subject', ({ jwt }) => jwt.sign({ email: h.admin.email }));
     const expired = await (await signer.handle(new Request('http://localhost/expired'))).text();
@@ -162,6 +163,25 @@ describe('Controllers HTTP com aplicação real e persistência em memória', ()
 });
 
 describe('Tratamento HTTP de falhas', () => {
+  it('não inicializa a API sem uma chave JWT configurada', () => {
+    const mocks = createMockEnvironment();
+    const previous = process.env.JWT_SECRET;
+    delete process.env.JWT_SECRET;
+    try {
+      expect(() => createApp({
+        useCases: createUseCases(mocks.repositories, mocks.unitOfWork, mocks.workOrderQueries),
+        checkDatabase: async () => {}
+      })).toThrow('JWT_SECRET');
+    expect(() => createApp({
+      useCases: createUseCases(mocks.repositories, mocks.unitOfWork, mocks.workOrderQueries),
+      checkDatabase: async () => {}, jwtSecret: 'too-short'
+    })).toThrow('at least 32 characters');
+    } finally {
+      if (previous === undefined) delete process.env.JWT_SECRET;
+      else process.env.JWT_SECRET = previous;
+    }
+  });
+
   const cases = [
     [new ApplicationError(ErrorKind.NotFound, 'Ausente'), 404, 'Ausente'],
     [new ApplicationError(ErrorKind.Validation, 'Inválido'), 422, 'Inválido'],
@@ -176,7 +196,7 @@ describe('Tratamento HTTP de falhas', () => {
   it.each(cases)('traduz %s para %s sem vazar detalhes', async (error, status, message) => {
     const mocks = createMockEnvironment();
     mocks.repositories.users.findByEmail.mockRejectedValue(error);
-    const app = createApp({ useCases: createUseCases(mocks.repositories, mocks.unitOfWork, mocks.workOrderQueries), checkDatabase: async () => {} });
+    const app = createApp({ useCases: createUseCases(mocks.repositories, mocks.unitOfWork, mocks.workOrderQueries), checkDatabase: async () => {}, jwtSecret: TEST_JWT_SECRET });
     const logger = spyOn(console, 'error').mockImplementation(() => {});
     try {
       const response = await app.handle(new Request('http://localhost/api/v1/auth/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'user@example.test', password: 'password123' }) }));
@@ -186,7 +206,7 @@ describe('Tratamento HTTP de falhas', () => {
   });
   it('saúde falha quando a dependência do banco falha', async () => {
     const mocks = createMockEnvironment();
-    const app = createApp({ useCases: createUseCases(mocks.repositories, mocks.unitOfWork, mocks.workOrderQueries), checkDatabase: async () => { throw new Error('Banco fora'); } });
+    const app = createApp({ useCases: createUseCases(mocks.repositories, mocks.unitOfWork, mocks.workOrderQueries), checkDatabase: async () => { throw new Error('Banco fora'); }, jwtSecret: TEST_JWT_SECRET });
     const logger = spyOn(console, 'error').mockImplementation(() => {});
     try { expect((await app.handle(new Request('http://localhost/health'))).status).toBe(500); } finally { logger.mockRestore(); }
   });

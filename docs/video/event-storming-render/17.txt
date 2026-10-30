@@ -1,1 +1,0 @@
-A sétima etapa mostra os agregados e seus limites de consistência. Uma raiz controla como suas entidades internas podem mudar.

@@ -1,22 +1,22 @@
-# Quadro → implementação
+# Do quadro à implementação
 
 ## Comandos principais
 
 | Comando / intenção | Handler (src/application/use-cases/) | Comportamento | Porta HTTP existente |
 |---|---|---|---|
 | Receber OS | work-order/create-work-order.ts | WorkOrder.create | POST /api/v1/work-orders |
-| Iniciar diagnóstico | work-order/start-diagnosis.ts | startDiagnosis | POST /work-orders/:id/status — DIAGNOSIS |
-| Apresentar orçamento | work-order/submit-quote.ts | submitQuote | POST /work-orders/:id/status — AWAITING_APPROVAL |
-| Aprovar orçamento | work-order/approve-quote.ts | approveQuote + Part.consumeForWorkOrder | POST /public/work-orders/:trackingCode/decision — approved=true |
-| Rejeitar orçamento | work-order/reject-quote.ts | rejectQuote | POST /public/work-orders/:trackingCode/decision — approved=false |
+| Iniciar diagnóstico | work-order/start-diagnosis.ts | startDiagnosis | POST /work-orders/:id/status (DIAGNOSIS) |
+| Apresentar orçamento | work-order/submit-quote.ts | submitQuote | POST /work-orders/:id/status (AWAITING_APPROVAL) |
+| Aprovar orçamento | work-order/approve-quote.ts | approveQuote + Part.consumeForWorkOrder | POST /public/work-orders/:trackingCode/decision (approved=true) |
+| Rejeitar orçamento | work-order/reject-quote.ts | rejectQuote | POST /public/work-orders/:trackingCode/decision (approved=false) |
 | Propor adicional | work-order/propose-additional-repair.ts | proposeAdditionalRepair | POST /work-orders/:id/items |
-| Finalizar reparo | work-order/finish-repair.ts | finishRepair | POST /work-orders/:id/status — FINISHED |
-| Registrar entrega | work-order/record-delivery.ts | recordDelivery | POST /work-orders/:id/status — DELIVERED |
-| Receber estoque | part/receive-stock.ts | recordReceipt | POST /parts/:id/movements — delta positivo |
-| Retirar estoque | part/withdraw-stock.ts | recordWithdrawal | POST /parts/:id/movements — delta negativo |
+| Finalizar reparo | work-order/finish-repair.ts | finishRepair | POST /work-orders/:id/status (FINISHED) |
+| Registrar entrega | work-order/record-delivery.ts | recordDelivery | POST /work-orders/:id/status (DELIVERED) |
+| Receber estoque | part/receive-stock.ts | recordReceipt | POST /parts/:id/movements (delta positivo) |
+| Retirar estoque | part/withdraw-stock.ts | recordWithdrawal | POST /parts/:id/movements (delta negativo) |
 | Cadastrar/atualizar/desativar | customer/, vehicle/, service/, part/, workshop/ | ações específicas da raiz | rotas CRUD correspondentes |
 
-As portas abreviadas possuem o prefixo `/api/v1`. Os formatos antigos de status/decision/movements permanecem; adaptadores direcionam cada intenção para seu handler. Papéis técnicos e estoquista são atores do negócio, não permissões adicionais já implementadas no JWT.
+As rotas abreviadas na tabela usam o prefixo `/api/v1`. Os formatos existentes de status, decisão e movimentação continuam em uso; adaptadores encaminham cada intenção ao handler correspondente. Equipe técnica e estoquista são papéis do negócio, não permissões distintas no JWT atual.
 
 ## Eventos com envelope
 
@@ -36,9 +36,9 @@ As portas abreviadas possuem o prefixo `/api/v1`. Os formatos antigos de status/
 | E16 | PartsConsumed | Part.consumeForWorkOrder |
 | E17 | MinimumStockReached | cruzamento do limite em saída/consumo |
 
-`src/domain/shared/domain-event.ts` tipa os nomes; `application/domain-event-store.ts` define a porta; `infrastructure/database/domain-event-store.ts` e `infrastructure/in-memory/domain-event-store.ts` implementam o registro. `migrations/0003_domain_model.sql` adiciona versões e tabela de eventos.
+`src/domain/shared/domain-event.ts` define os nomes dos eventos. `application/domain-event-store.ts` define a porta, implementada por `infrastructure/database/domain-event-store.ts` e `infrastructure/in-memory/domain-event-store.ts`. `migrations/0003_domain_model.sql` adiciona versões e a tabela de eventos.
 
-Na aprovação, todos os fatos são confirmados pelo mesmo commit. A ordem de gravação não substitui um workflow distribuído; não existe subscriber que reaja a QuoteApproved. O handler coordena explicitamente as operações.
+Ao aprovar o orçamento, a aplicação grava todos os fatos no mesmo commit. Não há workflow distribuído nem subscriber para `QuoteApproved`; o handler coordena as operações de forma explícita.
 
 ## Consultas / modelos de leitura
 
@@ -54,13 +54,13 @@ Na aprovação, todos os fatos são confirmados pelo mesmo commit. A ordem de gr
 | Histórico de status | GetWorkOrderHistory + history | explicar mudanças ao longo do tempo |
 | Tempo médio | GetAverageExecutionTime | análise operacional |
 
-Leituras são síncronas do estado persistido, com adaptadores PgWorkOrderQueries e InMemoryWorkOrderQueries. Não são projeções reconstruídas a partir do log de eventos.
+`PgWorkOrderQueries` e `InMemoryWorkOrderQueries` leem o estado persistido de forma síncrona. Eles não reconstroem projeções a partir do log de eventos.
 
 ## Repositórios
 
-Cada raiz possui contrato em `src/domain/<conceito>/*-repository.ts`, adaptador PostgreSQL em `src/infrastructure/repositories/` e adaptador em memória em `src/infrastructure/in-memory/`. Ambos usam os mesmos casos de uso. WorkOrderRepository só expõe find/save; não oferece alteração isolada de saldo do orçamento, consumo de item, decisão ou histórico.
+Cada raiz tem um contrato em `src/domain/<conceito>/*-repository.ts`, um adaptador PostgreSQL em `src/infrastructure/repositories/` e outro em `src/infrastructure/in-memory/`. Os dois adaptadores atendem aos mesmos casos de uso. `WorkOrderRepository` oferece `find` e `save`; não permite alterar separadamente o orçamento, o consumo de itens, as decisões ou o histórico.
 
 
 ## Migração de dados existentes
 
-A migração 0003 mantém as tabelas existentes e acrescenta colunas de versão. Para OS anteriores, reconstrói a revisão pelo histórico de transições IN_PROGRESS → AWAITING_APPROVAL e associa decisões por timestamp; esse backfill roda uma única vez. A reconstrução depende da integridade do histórico anterior e não recria eventos que nunca foram registrados. Novas decisões sempre persistem a versão explícita do agregado.
+A migração 0003 mantém as tabelas existentes e acrescenta colunas de versão. Para as OS antigas, ela usa as transições de IN_PROGRESS para AWAITING_APPROVAL para reconstruir as revisões e associa as decisões pelo timestamp. Esse backfill roda uma vez. Ele depende da integridade do histórico anterior e não recria eventos ausentes. As novas decisões gravam explicitamente a versão do agregado.

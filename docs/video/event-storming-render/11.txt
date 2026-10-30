@@ -1,1 +1,0 @@
-A quinta etapa associa atores e comandos. O ator expressa uma intenção que pode ser aceita ou recusada pelo domínio.

@@ -12,9 +12,9 @@
 | WorkOrder / Atendimento | work order ID; código público alternativo | WorkOrderItem, QuoteDecision, StatusChange | TrackingCode, Quote, QuoteVersion, Money, Quantity | WorkOrderRepository |
 | AdminUser / Identidade | user ID | nenhuma | email/hash ainda representados como strings | AdminUserRepository |
 
-Uma raiz também é uma entidade. Uma entidade interna não recebe um repositório independente: isso permitiria alterar o agregado sem validar suas regras. `QuoteDecision` e `StatusChange` recebem identidade na persistência, permanecem imutáveis e pertencem ao histórico da OS. `Quote` é VO porque um orçamento desta versão é descrito por valores; sua versão pertence à OS e não cria outra raiz.
+Cada raiz também é uma entidade. As entidades internas não têm repositórios próprios, pois isso permitiria alterá-las sem validar as regras do agregado. `QuoteDecision` e `StatusChange` recebem identidade ao serem persistidos. Permanecem imutáveis e fazem parte do histórico da OS. `Quote` é um VO: o orçamento de uma versão é definido pelos valores que contém. A versão pertence à OS e não forma outra raiz.
 
-`InventoryMovement` é um registro imutável produzido pelo comportamento da peça e persistido pelo `PartRepository`. O agregado Part não carrega toda sua história ao consultar saldo; a leitura de movimentos é separada, evitando um histórico ilimitado dentro da entidade em memória. Part + movimento + evento são gravados no mesmo UnitOfWork.
+`Part` produz registros imutáveis `InventoryMovement`, que `PartRepository` persiste. A consulta de saldo não carrega todo o histórico de movimentações; a leitura fica separada para que a entidade em memória não cresça sem limite. A peça, o movimento e o evento são gravados no mesmo `UnitOfWork`.
 
 ## Regras protegidas pelas raízes
 
@@ -41,13 +41,13 @@ Uma raiz também é uma entidade. Uma entidade interna não recebe um repositór
 
 ### Demais raízes
 
-Customer controla nome e contato com ações específicas; Vehicle controla marca/modelo/ano e pertencimento por customerId; Service controla preço/duração e ativação; Workshop valida seus dados. A unicidade de CPF/CNPJ, placa e SKU e a integridade referencial são verificadas pelos adaptadores e pelo banco, com comportamento correspondente em memória.
+`Customer` controla nome e contato por ações específicas. `Vehicle` controla marca, modelo, ano e vínculo com `customerId`. `Service` controla preço, duração e ativação. `Workshop` valida seus dados. Os adaptadores e o banco verificam a unicidade de CPF/CNPJ, placa e SKU, além da integridade referencial. O adaptador em memória segue as mesmas regras.
 
-Ainda não foram criados VOs específicos de endereço, email e telefone. São strings no modelo atual; o schema HTTP valida email onde exigido. Eles não são apresentados como VOs implementados nos quadros.
+Endereço, email e telefone ainda são strings. O schema HTTP valida o formato do email quando necessário. Os quadros não apresentam esses campos como VOs implementados.
 
 ### Exclusões
 
-Excluir cliente ou veículo remove suas OS e os respectivos filhos em cascata. Movimentos de estoque mantêm o registro e perdem o vínculo à OS; eventos já registrados permanecem para auditoria. Serviços e peças usam desativação. A política e os limites transacionais estão em [exclusoes.md](exclusoes.md).
+Ao excluir cliente ou veículo, o sistema também remove suas OS e os filhos dessas ordens. Os movimentos de estoque permanecem, mas perdem o vínculo à OS excluída. Os eventos registrados continuam disponíveis para auditoria. Serviços e peças são desativados. Consulte a [política e os limites transacionais](exclusoes.md).
 
 ## VOs implementados
 
@@ -79,12 +79,12 @@ flowchart LR
   PG --> DB[(PostgreSQL)]
 ```
 
-`ChangeWorkOrderStatus`, `DecideQuote` e `AdjustStock` são adaptadores dos formatos já existentes de API; direcionam para handlers específicos. Eles não contêm transições nem decisões sobre saldo. O domínio não conhece Elysia, Drizzle, SQL, JWT ou Bun.
+`ChangeWorkOrderStatus`, `DecideQuote` e `AdjustStock` adaptam os formatos existentes da API e chamam handlers específicos. Eles não definem transições nem alteram regras de saldo. O domínio não depende de Elysia, Drizzle, SQL, JWT ou Bun.
 
 ## Eventos e persistência
 
-A raiz WorkOrder acumula fatos pendentes; o handler salva a raiz e registra esses fatos via `DomainEventStore`. Ao carregar a OS, `pendingEvents` está vazio; salvar novamente um agregado carregado não registra eventos antigos. `Part` retorna fatos com o resultado de sua ação.
+`WorkOrder` acumula fatos pendentes. O handler salva a raiz e registra esses fatos por `DomainEventStore`. Ao carregar a OS, `pendingEvents` está vazio; salvá-la novamente não duplica eventos antigos. `Part` retorna os fatos junto com o resultado da ação.
 
-`domain_events` é um registro transacional com UUID do evento, nome, tipo/identidade da raiz, data e payload. **Não há Event Sourcing, broker, subscriber, saga, notificação ou projetor assíncrono.** Projeções HTTP consultam o estado persistido diretamente.
+`domain_events` registra, na mesma transação, o UUID e nome do evento, a raiz, a data e o payload. O projeto não usa Event Sourcing, broker, subscriber, saga, notificações ou projetores assíncronos. As rotas HTTP consultam diretamente o estado persistido.
 
-A aplicação usa transação envolvendo OS e Part na aprovação. A separação dos agregados continua preservada no modelo, mas sua coordenação é síncrona por uma única aplicação/banco. Se no futuro forem serviços independentes, será necessário decidir reserva, idempotência, integração e compensação; esses mecanismos não estão no MVP.
+Ao aprovar um orçamento, a aplicação atualiza OS e Part dentro da mesma transação. O modelo mantém os agregados separados, mas uma única aplicação e um único banco coordenam as mudanças de forma síncrona. Se eles virarem serviços independentes, o projeto precisará definir reserva, idempotência, integração e compensação. O MVP não implementa esses mecanismos.

@@ -1,15 +1,15 @@
-# 02 — Linha do tempo
+# 02: Linha do tempo
 
-**Objetivo:** Ordenar acontecimentos, identificar alternativas e ciclos.
+Esta etapa ordena os acontecimentos e mostra caminhos alternativos e ciclos.
 
 [Visualizador](index.html) · [SVG](02-linha-do-tempo.svg) · [Mermaid](02.mmd) · [Índice](../README.md)
 
 ![Quadro da etapa 2](02-linha-do-tempo.svg)
 
-O caminho principal é: cadastro de cliente/veículo e catálogo → OS recebida → orçamento calculado → diagnóstico iniciado → orçamento apresentado → orçamento aprovado → execução iniciada → reparo finalizado → veículo entregue.
+No caminho principal, o grupo cadastra cliente, veículo e catálogo; recebe a OS, calcula o orçamento, inicia o diagnóstico e apresenta a proposta. Depois da aprovação, a equipe começa o reparo, finaliza a OS e entrega o veículo.
 
-**Alternativas:** rejeição registra a decisão e mantém espera; reparo adicional pausa execução, revisa/apresenta orçamento e retorna à decisão; nova aprovação retoma execução. O consumo de estoque é parte da transação da aprovação. Entradas e saídas manuais podem acontecer independentemente.
+Quando o cliente rejeita o orçamento, o sistema registra a decisão e mantém a OS em espera. Um reparo adicional pausa a execução, atualiza o orçamento e pede outra decisão. A nova aprovação retoma o trabalho. A aprovação e o consumo de estoque pertencem à mesma transação. Entradas e saídas manuais podem ocorrer fora desse fluxo.
 
-O quadro mostra ordem lógica de negócio, não durações em escala ou ordem de chamadas HTTP. As setas tracejadas indicam caminhos condicionais/retornos. A disponibilidade verificada na criação não representa uma reserva.
+O quadro mostra a ordem lógica do negócio; não representa durações nem a ordem das chamadas HTTP. As setas tracejadas marcam caminhos condicionais ou retornos. A conferência de disponibilidade na criação não reserva as peças.
 
-**Saída:** sequência principal, rejeição e ciclo adicional, com dependência do estoque explícita.
+O resultado é um mapa do fluxo principal, da rejeição e do ciclo de reparo adicional, com a dependência do estoque indicada.

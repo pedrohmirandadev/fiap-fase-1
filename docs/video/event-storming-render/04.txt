@@ -1,1 +1,0 @@
-O atendimento começa com a ordem recebida, segue para o cálculo do orçamento e o diagnóstico, e chega à apresentação da proposta para o cliente.

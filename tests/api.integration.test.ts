@@ -1,11 +1,14 @@
 import { afterAll, describe, expect, it } from 'bun:test';
 import { createApp } from '../src/presentation/app';
+import { createProductionApp } from '../src/presentation/production-app';
 import { createUseCases } from '../src/composition';
 import { createPostgresTestEnvironment } from './support/postgres-environment';
 import { seedRepositoryFixture } from './support/repository-contract';
 import { createEntityFactories, FIXTURE_ADMIN_PASSWORD } from './factories';
+import { TEST_JWT_SECRET } from './support/test-secrets';
 
 const database = createPostgresTestEnvironment();
+const productionApp = createProductionApp(TEST_JWT_SECRET);
 afterAll(() => database.close());
 /** Cada teste HTTP possui banco isolado, dados próprios e servidor em porta efêmera. */
 async function withApi(check: (context: { baseUrl: string; token: string }) => Promise<void>) {
@@ -13,7 +16,7 @@ async function withApi(check: (context: { baseUrl: string; token: string }) => P
     await seedRepositoryFixture(env);
     const admin = createEntityFactories().adminUser();
     await env.addAdmin(admin);
-    const app = createApp({ useCases: createUseCases(env.repositories, env.unitOfWork, env.workOrderQueries), checkDatabase: async () => {}, jwtSecret: 'postgres-api-test-secret-12345678901234567890' });
+    const app = createApp({ useCases: createUseCases(env.repositories, env.unitOfWork, env.workOrderQueries), checkDatabase: async () => {}, jwtSecret: TEST_JWT_SECRET });
     app.listen(0);
     const baseUrl = `http://localhost:${app.server?.port}`;
     try {
@@ -26,6 +29,12 @@ async function withApi(check: (context: { baseUrl: string; token: string }) => P
 }
 
 describe('HTTP com PostgreSQL real e rollback por cenário', () => {
+  it('healthcheck da composição de produção confirma conexão com PostgreSQL', async () => {
+    const response = await productionApp.handle(new Request('http://localhost/health'));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ status: 'ok', database: 'connected' });
+  });
+
   it('cria OS, consulta orçamento, aprova e acompanha mudanças', () => withApi(async ({ baseUrl, token }) => {
     const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json' };
     const [customer] = await (await fetch(`${baseUrl}/api/v1/customers`, { headers })).json() as Array<{ id: number }>;

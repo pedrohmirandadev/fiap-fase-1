@@ -6,4 +6,3 @@ docs/*
 !docs/ddd/
 docs/ddd/*
 !docs/ddd/event-storming/
-tests

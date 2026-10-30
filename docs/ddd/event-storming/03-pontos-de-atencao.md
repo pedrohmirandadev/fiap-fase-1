@@ -1,14 +1,14 @@
-# 03 — Pontos de atenção e decisões
+# 03: Pontos de atenção e decisões
 
-**Objetivo:** Vincular perguntas às partes do fluxo que dependem delas.
+Esta etapa registra as perguntas que afetam cada parte do fluxo.
 
 [Visualizador](index.html) · [SVG](03-pontos-de-atencao.svg) · [Mermaid](03.mmd) · [Índice](../README.md)
 
 ![Quadro da etapa 3](03-pontos-de-atencao.svg)
 
-Os losangos PA registram reserva de estoque, rejeição, versão do orçamento, adicional, concorrência, notificações, tempo médio e multiunidade. Cada questão tem estado “decidido” ou “em aberto”. Não apagar perguntas ao escolher uma solução: registrar a decisão e sua limitação.
+Os losangos PA mostram as dúvidas sobre reserva de estoque, rejeição, versão do orçamento, reparo adicional, concorrência, notificações, tempo médio e multiunidade. O quadro marca cada questão como decidida ou em aberto. Quando o grupo escolhe uma solução, registre também seus limites.
 
-**Saída:** decisões justificadas e questões pendentes. Veja [registro completo](../decisoes.md).
+O resultado reúne decisões justificadas e perguntas ainda pendentes. Consulte o [registro completo](../decisoes.md).
 
 | ID | Pergunta | Decisão / situação |
 |---|---|---|

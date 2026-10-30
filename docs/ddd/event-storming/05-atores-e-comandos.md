@@ -1,16 +1,16 @@
-# 05 — Atores e comandos
+# 05: Atores e comandos
 
-**Objetivo:** Mostrar quem expressa cada intenção e qual comportamento a atende.
+Esta etapa liga cada intenção ao ator que a inicia e ao comportamento que a atende.
 
 [Visualizador](index.html) · [SVG](05-atores-e-comandos.svg) · [Mermaid](05.mmd) · [Índice](../README.md)
 
 ![Quadro da etapa 5](05-atores-e-comandos.svg)
 
-O quadro evolui para linhas de intenção. Cliente aprova/rejeita; atendente recebe OS/entrega; equipe inicia diagnóstico, apresenta orçamento, propõe adicional e finaliza; estoquista recebe/retira estoque; administrador mantém catálogo.
+O quadro organiza as ações por intenção. O cliente aprova ou rejeita o orçamento. O atendente recebe OS e registra a entrega. A equipe técnica inicia o diagnóstico, apresenta o orçamento, propõe reparos adicionais e finaliza o serviço. O estoquista movimenta peças, e o administrador mantém o catálogo.
 
-Os atores de negócio compartilham a credencial administrativa atual, exceto o cliente, que usa TrackingCode. Um comando pode falhar por uma invariante. Não chamar isso de evento de sucesso.
+No MVP, os papéis internos usam a mesma credencial administrativa. O cliente consulta a OS pelo `TrackingCode`. Uma invariante pode rejeitar um comando; nesse caso, não há evento de sucesso.
 
-**Saída:** comando, ator, handler e eventos aceitos por intenção. Os arquivos dos handlers estão em [rastreabilidade](../rastreabilidade.md).
+O resultado mostra o ator, o comando, o handler e os eventos aceitos em cada intenção. Os handlers estão listados na [rastreabilidade](../rastreabilidade.md).
 
 | Ator | Comando | Handler |
 |---|---|---|

@@ -1,1 +1,0 @@
-A raiz da ordem protege itens, decisões e histórico. Dinheiro, quantidade, código de acompanhamento, orçamento e versão são objetos de valor, validados e comparados por conteúdo.

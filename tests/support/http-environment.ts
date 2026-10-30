@@ -3,6 +3,7 @@ import { createApp } from '../../src/presentation/app';
 import { createUseCases } from '../../src/composition';
 import { createInMemoryEnvironment } from '../../src/infrastructure/in-memory/context';
 import { createEntityFactories, FIXTURE_ADMIN_PASSWORD } from '../factories';
+import { TEST_JWT_SECRET } from './test-secrets';
 
 export async function createHttpEnvironment() {
   const env = createInMemoryEnvironment();
@@ -10,7 +11,7 @@ export async function createHttpEnvironment() {
   const admin = factories.adminUser();
   env.store.addAdminUser(admin);
   const app = createApp({ useCases: createUseCases(env.repositories, env.unitOfWork, env.workOrderQueries),
-    checkDatabase: async () => {}, jwtSecret: 'isolated-test-secret-12345678901234567890', corsOrigin: 'http://client.test' });
+    checkDatabase: async () => {}, jwtSecret: TEST_JWT_SECRET, corsOrigin: 'http://client.test' });
   async function request(method: string, path: string, body?: unknown, token?: string) {
     return app.handle(new Request(`http://localhost${path}`, { method,
       headers: { ...(body === undefined ? {} : { 'content-type': 'application/json' }), ...(token ? { authorization: `Bearer ${token}` } : {}) },

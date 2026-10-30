@@ -1,4 +1,4 @@
-# Pontos de atenção e decisões de modelagem
+# Pontos de atenção e decisões do modelo
 
 | ID | Questão | Decisão atual | Implementação / limite |
 |---|---|---|---|
@@ -10,7 +10,7 @@
 | H06 | Como notificar o cliente? | Questão aberta. | Não há email, SMS nem entrega de mensagens. Cliente consulta por TrackingCode. |
 | H07 | Qual é o tempo médio? | Primeira aprovação até finalização, incluindo espera por adicionais. | WorkOrderQueries.averageExecutionMinutes. Não mede esforço ativo da equipe. |
 | H08 | OS pertence a qual unidade? | Questão aberta para evolução multiunidade. | Workshop é cadastro; work_orders ainda não tem workshopId. Não representar associação inexistente. |
-| H09 | Todo fato precisa de mensagem/evento persistido? | Registrar envelopes dos fluxos de OS e movimentos de estoque; cadastros continuam persistindo estado. | C01–C12 estão visíveis na descoberta, mas não geram DomainEvent. Não há infraestrutura de publicação. |
+| H09 | Todo fato precisa de mensagem/evento persistido? | Registrar envelopes dos fluxos de OS e movimentos de estoque; cadastros continuam persistindo estado. | C01 a C12 estão visíveis na descoberta, mas não geram DomainEvent. Não há infraestrutura de publicação. |
 | H10 | Consulta de progresso é um evento? | Não muda o negócio; tratar como query/read model. | TrackWorkOrder. Pode ter observabilidade técnica futura, mas não gera evento de sucesso da OS. |
 | H11 | Qual é o limite transacional? | Escrita dos filhos somente pelo repositório da raiz. Aprovação coordena duas raízes no monólito. | WorkOrderRepository.save; PartRepository. Nenhum repositório independente para item/decisão/histórico. |
 | H12 | Serviços precisam de máquinas/funcionários? | Fora do escopo atual. | Service representa item precificado do catálogo, sem agenda ou alocação. |
@@ -31,4 +31,4 @@ stateDiagram-v2
   DELIVERED --> [*]
 ```
 
-Falta de estoque, versão obsoleta, item inativo ou transição inválida interrompem o comando. Não se registra orçamento aprovado ou saída de peça quando a transação falha.
+O sistema rejeita o comando quando falta estoque, a versão está obsoleta, o item está inativo ou a transição é inválida. Se a transação falhar, ele não registra a aprovação do orçamento nem a saída da peça.

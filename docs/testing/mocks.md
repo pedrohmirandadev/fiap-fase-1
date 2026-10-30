@@ -2,7 +2,7 @@
 
 ## Ambiente automático
 
-`createMockEnvironment()` monta todos os repositórios, a consulta de OS, o registro de eventos, o UnitOfWork e um conjunto relacionado de entidades fictícias. Os mocks, as sequências de IDs e os dados pertencem à chamada; crie um ambiente novo em cada teste.
+`createMockEnvironment()` cria todos os repositórios, a consulta de OS, o registro de eventos, o UnitOfWork e entidades fictícias relacionadas. Mocks, IDs e dados ficam isolados naquela chamada. Crie um ambiente novo para cada teste.
 
 ```ts
 import { expect } from 'bun:test';
@@ -36,7 +36,7 @@ Os imports dos exemplos consideram um arquivo em `tests/`.
 | `workOrderQueries` | WorkOrderQueries |
 | `unitOfWork` | UnitOfWork |
 
-Cada método oferece as APIs tipadas de `bun:test`: `mockResolvedValue`, `mockResolvedValueOnce`, `mockRejectedValue`, `mockImplementation` e inspeção de chamadas. Uma chamada sem configuração rejeita com `Mock não configurado: NomeDaPorta.metodo`, evitando respostas de sucesso acidentais. Configure `undefined` explicitamente para representar ausência ou uma operação sem retorno.
+Os métodos oferecem as APIs tipadas de `bun:test`: `mockResolvedValue`, `mockResolvedValueOnce`, `mockRejectedValue`, `mockImplementation` e inspeção de chamadas. Se um método não for configurado, a chamada falha com `Mock não configurado: NomeDaPorta.metodo`. Isso evita um retorno de sucesso implícito. Configure `undefined` para representar um registro ausente ou uma operação sem retorno.
 
 ```ts
 const environment = createMockEnvironment();
@@ -65,13 +65,13 @@ const updated = await new ReceiveStock(unitOfWork).execute({
 // updated.stockQuantity === 15; chamadas podem ser verificadas nos mocks.
 ```
 
-Esse mock serve à orquestração do caso de uso. Para verificar persistência, cascata ou rollback com estado real, use `createInMemoryEnvironment()` ou os testes PostgreSQL isolados.
+Use esse mock para conferir a orquestração do caso de uso. Para testar persistência, cascata ou rollback com estado real, use `createInMemoryEnvironment()` ou os testes PostgreSQL isolados.
 
 ## Fábricas
 
-`fixtures` contém customer, vehicle, service, part, workshop, adminUser e workOrder, com relacionamentos coerentes. Também inclui serviceItem, partItem, quoteDecision, statusChange e inventoryMovement. A OS começa em `RECEIVED`; a decisão fornecida é um exemplo independente e ainda não está registrada nessa OS.
+`fixtures` contém `customer`, `vehicle`, `service`, `part`, `workshop`, `adminUser` e `workOrder` com relações coerentes. Também fornece `serviceItem`, `partItem`, `quoteDecision`, `statusChange` e `inventoryMovement`. A OS começa em `RECEIVED`. A decisão é um exemplo independente e ainda não pertence a essa OS.
 
-`factories` permite criar novas entidades com sobrescritas tipadas. Há uma fábrica por entidade, incluindo os filhos de agregado:
+Use `factories` para criar entidades com sobrescritas tipadas. Há uma fábrica para cada entidade, inclusive para os filhos dos agregados:
 
 ```ts
 const { factories } = createMockEnvironment();
@@ -83,11 +83,11 @@ const waitingOrder = factories.workOrder({ customerId: customer.id!, vehicleId: 
   .startDiagnosis().submitQuote();
 ```
 
-Defaults usam IDs sequenciais, CPF/CNPJ válidos, placas válidas, VOs reais e data fixa para históricos. As entidades já têm identidade por padrão; nas entidades cujo ID é opcional, `id: undefined` representa uma entidade nova. As transições da OS usam os comportamentos do próprio domínio. IDs/documentos/placas são sequenciais dentro da fábrica; sobrescritas explícitas ficam sob controle do teste.
+Os valores padrão usam IDs sequenciais, documentos e placas válidos, VOs reais e uma data fixa para os históricos. As entidades já recebem identidade; quando o ID é opcional, passe `id: undefined` para representar uma entidade nova. As transições da OS chamam os comportamentos do domínio. A fábrica sequencia IDs, documentos e placas; o teste controla qualquer sobrescrita explícita.
 
-O hash do administrador é bcrypt válido com custo reduzido para testes; a senha padrão é exportada como `FIXTURE_ADMIN_PASSWORD`. O tracking code da fábrica é previsível para facilitar comparação e deve ser usado somente em testes.
+O hash do administrador usa bcrypt com custo reduzido para os testes. `FIXTURE_ADMIN_PASSWORD` é gerada aleatoriamente em cada processo e fica disponível às fixtures que precisam autenticar. O código de acompanhamento é previsível para facilitar comparações; use-o somente em testes.
 
-Para criar apenas os dados, importe `createEntityFactories` ou `createRelatedFixtures` de `tests/factories`. Para um único repositório, há funções como `createCustomerRepositoryMock()` exportadas por `tests/mocks`.
+Para gerar apenas dados, importe `createEntityFactories` ou `createRelatedFixtures` de `tests/factories`. `tests/mocks` também exporta funções para criar um mock isolado, como `createCustomerRepositoryMock()`.
 
 ## Limpeza e isolamento
 
@@ -103,8 +103,8 @@ bun run mocks:check
 bun run typecheck
 ```
 
-O gerador usa o compilador TypeScript para ler `RepositoryContext`, suas interfaces referenciadas e `WorkOrderQueries`. Todos os métodos dessas portas são gerados em `tests/mocks/generated/`, junto com o registro e os exports. Ao adicionar um repositório ao contexto ou um método a uma interface, execute a geração novamente. As fábricas de entidades permanecem explícitas para respeitar invariantes e relacionamentos.
+O gerador usa o compilador TypeScript para ler `RepositoryContext`, as interfaces relacionadas e `WorkOrderQueries`. Ele grava os métodos em `tests/mocks/generated/`, junto com o registro e os exports. Rode-o novamente quando adicionar um repositório ao contexto ou um método a uma interface. As fábricas continuam explícitas para manter invariantes e relacionamentos.
 
-`mocks:check` apenas confere se os arquivos estão sincronizados e retorna erro se houver diferenças. O gerador altera somente arquivos identificados como gerados dentro desse diretório. O UnitOfWork tem implementação própria para preservar o callback genérico.
+`mocks:check` verifica a sincronização e falha quando encontra diferenças. O gerador altera somente os arquivos marcados como gerados nesse diretório. O UnitOfWork tem uma implementação própria para preservar o callback genérico.
 
-Mocks e fábricas ficam fora da cobertura do código de produção. Os limiares de domínio e aplicação permanecem os mesmos.
+Mocks e fábricas não entram na cobertura do código de produção. Os limiares de domínio e aplicação continuam iguais.

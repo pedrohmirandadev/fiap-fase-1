@@ -1,1 +1,0 @@
-O agregado de peça protege o saldo e produz movimentos de estoque. Seu repositório usa controle de versão para recusar uma gravação concorrente obsoleta.

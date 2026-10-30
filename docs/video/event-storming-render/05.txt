@@ -1,1 +1,0 @@
-A aprovação autoriza a execução. A rejeição mantém a espera. Um reparo adicional pausa o trabalho, revisa o orçamento e exige uma nova decisão antes da retomada.

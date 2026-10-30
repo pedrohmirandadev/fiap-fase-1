@@ -1,1 +1,0 @@
-A oitava etapa delimita os contextos. Cada contexto reúne um modelo, uma linguagem e responsabilidades próprias.

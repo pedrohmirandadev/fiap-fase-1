@@ -2,7 +2,7 @@ import { hashSync } from 'bcryptjs';
 import { AdminUser } from '../../src/domain/identity/admin-user';
 import type { FactoryContext } from './factory-context';
 
-export const FIXTURE_ADMIN_PASSWORD = 'SenhaDeTeste123!';
+export const FIXTURE_ADMIN_PASSWORD = `Test-${crypto.randomUUID()}!`;
 type AdminUserProps = { id: number; email: string; password: string; passwordHash?: string };
 
 export function createAdminUserFactory(context: FactoryContext) {

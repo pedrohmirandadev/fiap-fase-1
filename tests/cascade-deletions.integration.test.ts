@@ -6,7 +6,9 @@ import { PgWorkOrderQueries } from '../src/infrastructure/queries/work-order-que
 import { DeleteCustomer } from '../src/application/use-cases/customer/delete-customer';
 import { registerCascadeDeletionTests, seedDeletionFixture, type DeletionEnvironment } from './support/cascade-deletion-contract';
 
-const sql = postgres(process.env.DATABASE_URL ?? 'postgres://oficina:oficina_local@localhost:5432/oficina', {
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) throw new Error('DATABASE_URL must be configured to run PostgreSQL integration tests');
+const sql = postgres(databaseUrl, {
   max: 1, connect_timeout: 5, onnotice: () => {}
 });
 const rollback = new Error('Rollback do schema de teste');

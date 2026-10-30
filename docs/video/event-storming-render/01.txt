@@ -1,1 +1,0 @@
-Na primeira etapa, os fatos aparecem sem ordem. O objetivo é descobrir a linguagem do negócio antes de escolher classes, repositórios ou tecnologias.

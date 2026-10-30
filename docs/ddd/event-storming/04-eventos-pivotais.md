@@ -1,15 +1,15 @@
-# 04 — Eventos pivotais
+# 04: Eventos pivotais
 
-**Objetivo:** Marcar fatos que mudam a fase do processo.
+Esta etapa marca os fatos que mudam o processo de fase.
 
 [Visualizador](index.html) · [SVG](04-eventos-pivotais.svg) · [Mermaid](04.mmd) · [Índice](../README.md)
 
 ![Quadro da etapa 4](04-eventos-pivotais.svg)
 
-- **OS recebida (E01):** atendimento passa a ser uma ordem rastreável.
-- **Orçamento aprovado (E05):** trabalho passa de proposta para execução autorizada; estoque é consumido atomicamente.
-- **Reparo finalizado (E12):** execução termina; entrega pode ser registrada.
+- OS recebida (E01): o atendimento passa a ter uma ordem rastreável.
+- Orçamento aprovado (E05): o trabalho fica autorizado e o estoque é consumido na mesma transação.
+- Reparo finalizado (E12): a execução termina e a equipe pode registrar a entrega.
 
-As linhas verticais delimitam essas mudanças no fluxo. Os post-its pivotais recebem ★ e borda espessa. A aprovação revisada repete a mudança de autorização no ciclo de adicional.
+As linhas verticais separam essas fases. Os eventos pivotais têm ★ e borda espessa. Quando o cliente aprova um orçamento revisado, a autorização muda novamente no ciclo de reparo adicional.
 
-**Saída:** fases visíveis que ajudam a discutir responsabilidades; pivotal não cria automaticamente um serviço separado.
+O quadro deixa as mudanças de fase visíveis para a discussão de responsabilidades. Um evento pivotal não exige a criação de um serviço separado.

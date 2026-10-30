@@ -1,6 +1,6 @@
 # GitHub Actions: testes, cobertura e SonarQube
 
-O workflow `.github/workflows/quality.yml` executa em pull requests destinados à `main`, pushes na `main` e execução manual por `workflow_dispatch`.
+O workflow `.github/workflows/quality.yml` roda em pull requests para `main`, em pushes para `main` e quando alguém o inicia manualmente por `workflow_dispatch`.
 
 ## Checks
 
@@ -11,40 +11,40 @@ O workflow `.github/workflows/quality.yml` executa em pull requests destinados �
 | SonarQube | Análise do projeto `oficina-tech-challenge`, importação do LCOV e aprovação do Quality Gate |
 | Quality Gate | Testes/cobertura e SonarQube precisam terminar com sucesso; um job falho, pulado ou cancelado reprova o check final |
 
-O Bun aplica o limiar configurado em `bunfig.toml`. `scripts/ci/check_coverage.py` verifica também os contadores brutos do LCOV, os totais globais e o JUnit; relatório ausente, inválido ou incompleto reprova a etapa. O percentual global é calculado a partir dos contadores, podendo diferir da agregação `All files` exibida pelo Bun.
+O Bun aplica o limiar de `bunfig.toml`. `scripts/ci/check_coverage.py` também confere os contadores LCOV, os totais e o JUnit. A etapa falha se algum relatório estiver ausente, inválido ou incompleto. O script calcula o percentual global a partir dos contadores, então o resultado pode diferir da linha `All files` do Bun.
 
-O PostgreSQL dos testes é um serviço efêmero do Actions. Os testes criam schemas próprios e aplicam migrações; não precisam da API em execução ou do seed. O CI não usa `RUN_INTEGRATION`, `continue-on-error` nem condições para omitir integrações.
+O Actions cria um PostgreSQL temporário para os testes. Cada cenário cria seu schema e aplica as migrações; a API e o seed não precisam estar ativos. O CI não usa `RUN_INTEGRATION`, `continue-on-error` ou condições que deixem integrações de fora.
 
 ## SonarQube sem secrets externos
 
-O job reutiliza o perfil `sonar` do `docker-compose.yml`, que já existe na `main`. `.github/sonar-ci.compose.yml` fixa as imagens do servidor e scanner por digest apenas no CI. As actions também são fixadas por SHA.
+O job usa o perfil `sonar` do `docker-compose.yml`, que já está na `main`. No CI, `.github/sonar-ci.compose.yml` fixa os digests das imagens do servidor e do scanner. As actions também usam SHA fixo.
 
-Cada execução:
+Em cada execução, o job:
 
-1. Baixa o LCOV e JUnit gerados pelo job de testes.
-2. Prepara os limites do host Linux e sobe SonarQube com seu PostgreSQL em um projeto Compose exclusivo.
-3. Aguarda o status `UP`, troca a senha inicial por uma senha aleatória e cria o projeto definido em `sonar-project.properties`.
-4. Copia o Quality Gate `Sonar way`, preservando suas condições, adiciona cobertura geral de linhas de 90%, zero bugs e zero vulnerabilidades no código completo e associa o gate ao projeto.
-5. Gera um token temporário de análise do projeto, mascara seu valor nos logs e o disponibiliza somente para o job. Não é necessário cadastrar `SONAR_TOKEN`, `SONAR_HOST_URL` ou senha no GitHub.
-6. Executa o scanner e aguarda o Quality Gate com `sonar.qualitygate.wait=true`. Falha na análise, timeout ou reprovação do gate faz o job falhar. [Documentação oficial do Quality Gate no CI](https://docs.sonarsource.com/sonarqube-community-build/analyzing-source-code/ci-integration/overview).
-7. Exporta relatórios e encerra os serviços com remoção dos volumes temporários, inclusive após falhas.
+1. Baixa o LCOV e o JUnit do job de testes.
+2. Configura os limites do host Linux e inicia o SonarQube e seu PostgreSQL em um projeto Compose exclusivo.
+3. Espera o servidor chegar a `UP`, troca a senha inicial por uma senha aleatória e cria o projeto descrito em `sonar-project.properties`.
+4. Copia o Quality Gate `Sonar way` com suas condições, acrescenta 90% de cobertura global de linhas e zero bugs e vulnerabilidades no código e associa o gate ao projeto.
+5. Gera um token temporário de análise, oculta seu valor nos logs e o entrega apenas ao job. O GitHub não precisa armazenar `SONAR_TOKEN`, `SONAR_HOST_URL` ou senha.
+6. Executa o scanner e aguarda o Quality Gate por `sonar.qualitygate.wait=true`. O job falha se a análise falhar, exceder o tempo ou não passar no gate. Consulte a [documentação oficial do Quality Gate no CI](https://docs.sonarsource.com/sonarqube-community-build/analyzing-source-code/ci-integration/overview).
+7. Exporta os relatórios e remove os serviços e volumes temporários, inclusive quando uma etapa falha.
 
-`sonar-project.properties` classifica os testes de domínio em `src/` como testes, mantendo-os fora do código de produção. As exclusões de cobertura dos quatro pontos de entrada são as mesmas do Bun.
+`sonar-project.properties` marca os testes de domínio em `src/` como testes, fora do código de produção. O SonarQube também usa as mesmas exclusões de cobertura que o Bun para os quatro pontos de entrada.
 
-A instância é descartável: não preserva histórico entre execuções e o dashboard deixa de existir ao encerrar o job. O Community Build recebe uma análise do código da execução, sem parâmetros de branch/PR exclusivos de outras edições. As condições de novo código do `Sonar way` dependem das métricas disponíveis na primeira análise; as condições globais adicionadas verificam cobertura, bugs e vulnerabilidades mesmo sem baseline, e o validador LCOV sempre exige o percentual definido.
+O job remove a instância ao terminar. Ela não guarda histórico entre execuções, e o dashboard deixa de existir quando o job encerra. O Community Build analisa o código daquela execução, sem os parâmetros de branch e PR disponíveis em outras edições. As condições de novo código do `Sonar way` dependem das métricas da primeira análise. As condições globais verificam cobertura, bugs e vulnerabilidades mesmo sem um baseline; o validador LCOV sempre exige o percentual configurado.
 
 ## Evidências
 
-Os artefatos ficam disponíveis na execução do Actions por 14 dias:
+O Actions mantém estes artefatos por 14 dias:
 
 - `test-reports`: `lcov.info` e `junit.xml`, inclusive quando uma etapa de testes falha e o relatório foi gerado.
 - `sonar-reports`: logs dos serviços, `report-task.txt` quando disponível, `quality-gate.json`, `metrics.json` e `issues.json`. O arquivo de achados contém os primeiros 100 resultados e o total retornado pela API.
 
-O resumo do job de testes mostra a contagem de testes, número de arquivos e cobertura calculada a partir do LCOV. Se o scanner falhar antes de publicar uma análise, os relatórios Sonar podem não existir; os logs são preservados.
+O resumo do job mostra quantos testes rodaram, quantos arquivos foram medidos e a cobertura calculada pelo LCOV. Se o scanner falhar antes de publicar a análise, os relatórios Sonar podem não ser criados; os logs continuam disponíveis.
 
 ## Bloqueio de merge
 
-Após publicar o workflow e executar a primeira pipeline, configure uma regra de proteção ou ruleset para `main` no GitHub e exija o status check **Quality Gate**. Esse check final só fica verde quando os dois jobs anteriores passam. A criação do YAML não altera automaticamente as regras de proteção do repositório. [Configuração oficial de checks obrigatórios](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches).
+Depois de publicar o workflow e executar a primeira pipeline, configure uma regra de proteção ou ruleset para `main` e exija o status check **Quality Gate**. O check final passa somente quando os dois jobs anteriores passam. Adicionar o YAML não muda as regras de proteção do repositório. Consulte a [configuração oficial de checks obrigatórios](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches).
 
 ## Reproduzir as verificações localmente
 
@@ -59,4 +59,4 @@ bun run test:coverage --reporter=junit --reporter-outfile=coverage/junit.xml
 python3 scripts/ci/check_coverage.py
 ```
 
-Para análise no seu SonarQube local persistente, continue usando as instruções `test:sonar` e `sonar:scan` do README. Os scripts `bootstrap_sonar.py` e `export_sonar.py` são exclusivos da instância descartável do CI; não os execute contra uma instalação com dados que deseja preservar.
+Para analisar o projeto no SonarQube local e manter os dados entre execuções, siga as instruções `test:sonar` e `sonar:scan` do README. Os scripts `bootstrap_sonar.py` e `export_sonar.py` pertencem ao SonarQube temporário do CI. Não os rode numa instalação cujo histórico você queira preservar.
